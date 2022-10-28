@@ -3,13 +3,13 @@
 
 ## prefix substitution
 
-```
+```sql
 create table tablename (
     @_field type
 );
 ```
 turns into
-```
+```sql
 create table tablename (
     tablename_field type
 );
@@ -17,13 +17,13 @@ create table tablename (
 
 ## not null
 
-```
+```sql
 create table table_name (
     field_name type!
 );
 ```
 turns into
-```
+```sql
 create table table_name (
     field_name type not null
 );
@@ -31,13 +31,13 @@ create table table_name (
 
 ## reference arrow
 
-```
+```sql
 create table table_name (
     @_ref_field integer -> other_table_id
 );
 ```
 turns into
-```
+```sql
 create table table_name (
     table_name_ref_field integer 
         references other_table (other_table_id)
@@ -62,8 +62,10 @@ use strict;
 use warnings;
 
 my $file = $ARGV[0];
+my $out_file = ($file =~ s/\.ql//r);
 
 open(my $src, '<', $file) or die "Could not open $file: $!";
+open(my $out, '>', $out_file) or die $!;
 
 my $re_identifier = q/[^\s]+(?<!,)/;
 my $re_type = q/[^\s]+(?<!,)/;
@@ -108,7 +110,8 @@ while(my $line = <$src>)  {
         $line =~ s/-> ($re_identifier)_($re_identifier)/\n${indent}${indent}references $1 ($1_$2)/g;
     }
 
-    print $line;
+    print $out $line;
 }
 
 close $src;
+close $out;

@@ -21,7 +21,7 @@ create table? location (
 create table? tournament (
     &id,
     @_name varchar(255)!,
-    @_year numeric(1, 2)!,
+    @_year integer!,
     &ref location_id integer,
     @_host_id integer -> country_id,
     @_round_qualifier integer,
