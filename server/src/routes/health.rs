@@ -24,10 +24,11 @@ impl ApiRoute for HealthRoute {
         body: &String,
     ) -> Result<cgi::Response, String> {
         let res_body = serde_json::to_string(&HealthInfo {
-            method: *method,
+            method: method.to_owned(),
             body: body.to_owned(),
         })
         .map_err(|e| e.to_string())?;
+
         let mut res = string_response(200, res_body);
 
         res.headers_mut()
