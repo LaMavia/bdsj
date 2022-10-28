@@ -11,8 +11,8 @@ diesel::table! {
 diesel::table! {
     disqualification (disqualification_id) {
         disqualification_id -> Int4,
-        disqualification_participant_id -> Nullable<Int4>,
-        disqualification_round_id -> Nullable<Int4>,
+        disqualification_participant_id -> Int4,
+        disqualification_round_id -> Int4,
         disqualification_reason -> Text,
     }
 }
@@ -20,8 +20,8 @@ diesel::table! {
 diesel::table! {
     jump (jump_id) {
         jump_id -> Int4,
-        jump_participant_id -> Nullable<Int4>,
-        jump_round_id -> Nullable<Int4>,
+        jump_participant_id -> Int4,
+        jump_round_id -> Int4,
         jump_score -> Int4,
         jump_distance -> Int4,
     }
@@ -31,8 +31,8 @@ diesel::table! {
     lim (lim_id) {
         lim_id -> Int4,
         lim_amount -> Int4,
-        lim_country_id -> Nullable<Int4>,
-        lim_tournament_id -> Nullable<Int4>,
+        lim_country_id -> Int4,
+        lim_tournament_id -> Int4,
     }
 }
 
@@ -47,8 +47,8 @@ diesel::table! {
 diesel::table! {
     participant (participant_id) {
         participant_id -> Int4,
-        participant_country_id -> Nullable<Int4>,
-        participant_tournament_id -> Nullable<Int4>,
+        participant_country_id -> Int4,
+        participant_tournament_id -> Int4,
     }
 }
 
@@ -58,15 +58,15 @@ diesel::table! {
         person_firstname -> Varchar,
         person_lastname -> Varchar,
         person_gender -> Bpchar,
-        person_nationality_id -> Nullable<Int4>,
+        person_nationality_id -> Int4,
     }
 }
 
 diesel::table! {
     position (position_id) {
         position_id -> Int4,
-        position_participant_id -> Nullable<Int4>,
-        position_round_id -> Nullable<Int4>,
+        position_participant_id -> Int4,
+        position_round_id -> Int4,
         position_initial -> Int4,
         position_final -> Nullable<Int4>,
     }
@@ -85,10 +85,10 @@ diesel::table! {
         tournament_name -> Varchar,
         tournament_year -> Int4,
         tournament_location_id -> Nullable<Int4>,
-        tournament_host_id -> Nullable<Int4>,
+        tournament_host_id -> Int4,
         tournament_round_qualifier -> Nullable<Int4>,
-        tournament_round_first_id -> Nullable<Int4>,
-        tournament_round_second_id -> Nullable<Int4>,
+        tournament_round_first_id -> Int4,
+        tournament_round_second_id -> Int4,
     }
 }
 

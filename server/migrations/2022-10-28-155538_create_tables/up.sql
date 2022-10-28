@@ -24,21 +24,21 @@ create table if not exists tournament (
     tournament_year integer not null,
     tournament_location_id integer 
         references location (location_id),
-    tournament_host_id integer 
+    tournament_host_id integer not null 
         references country (country_id),
     tournament_round_qualifier integer,
-    tournament_round_first_id integer 
+    tournament_round_first_id integer not null 
         references round (round_id),
-    tournament_round_second_id integer 
+    tournament_round_second_id integer not null 
         references round (round_id)
 );
 
 create table if not exists lim (
     lim_id serial primary key,
     lim_amount integer not null default 2,
-    lim_country_id integer 
+    lim_country_id integer not null 
         references country (country_id),
-    lim_tournament_id integer 
+    lim_tournament_id integer not null 
         references tournament (tournament_id)
 );
 
@@ -47,23 +47,23 @@ create table if not exists person (
     person_firstname varchar(255) not null,
     person_lastname varchar(255) not null,
     person_gender char(1) not null,
-    person_nationality_id integer 
+    person_nationality_id integer not null 
         references country (country_id)
 );
 
 create table if not exists participant (
     participant_id serial primary key,
-    participant_country_id integer 
+    participant_country_id integer not null 
         references country (country_id),
-    participant_tournament_id integer 
+    participant_tournament_id integer not null 
         references tournament (tournament_id)
 );
 
 create table if not exists position (
     position_id serial primary key,
-    position_participant_id integer 
+    position_participant_id integer not null 
         references participant (participant_id),
-    position_round_id integer 
+    position_round_id integer not null 
         references round (round_id),
     position_initial integer not null,
     position_final integer
@@ -71,9 +71,9 @@ create table if not exists position (
 
 create table if not exists jump (
     jump_id serial primary key,
-    jump_participant_id integer 
+    jump_participant_id integer not null 
         references participant (participant_id),
-    jump_round_id integer 
+    jump_round_id integer not null 
         references round (round_id),
     jump_score integer not null,
     jump_distance integer not null
@@ -81,9 +81,9 @@ create table if not exists jump (
 
 create table if not exists disqualification (
     disqualification_id serial primary key,
-    disqualification_participant_id integer 
+    disqualification_participant_id integer not null 
         references participant (participant_id),
-    disqualification_round_id integer 
+    disqualification_round_id integer not null 
         references round (round_id),
     disqualification_reason text not null
 );
