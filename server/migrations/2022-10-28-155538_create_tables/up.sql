@@ -15,18 +15,20 @@ create table if not exists round (
 create table if not exists location (
     location_id serial primary key,
     location_name varchar(255) not null,
-    location_city varchar(255) not null
+    location_city varchar(255) not null,
+    location_country_id integer not null 
+        references country (country_id)
 );
 
 create table if not exists tournament (
     tournament_id serial primary key,
     tournament_name varchar(255) not null,
     tournament_year integer not null,
-    tournament_location_id integer 
+    tournament_location_id integer not null 
         references location (location_id),
     tournament_host_id integer not null 
         references country (country_id),
-    tournament_round_qualifier integer,
+    tournament_round_qualifier_id integer,
     tournament_round_first_id integer not null 
         references round (round_id),
     tournament_round_second_id integer not null 

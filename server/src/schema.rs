@@ -41,6 +41,7 @@ diesel::table! {
         location_id -> Int4,
         location_name -> Varchar,
         location_city -> Varchar,
+        location_country_id -> Int4,
     }
 }
 
@@ -84,9 +85,9 @@ diesel::table! {
         tournament_id -> Int4,
         tournament_name -> Varchar,
         tournament_year -> Int4,
-        tournament_location_id -> Nullable<Int4>,
+        tournament_location_id -> Int4,
         tournament_host_id -> Int4,
-        tournament_round_qualifier -> Nullable<Int4>,
+        tournament_round_qualifier_id -> Nullable<Int4>,
         tournament_round_first_id -> Int4,
         tournament_round_second_id -> Int4,
     }
@@ -98,6 +99,7 @@ diesel::joinable!(jump -> participant (jump_participant_id));
 diesel::joinable!(jump -> round (jump_round_id));
 diesel::joinable!(lim -> country (lim_country_id));
 diesel::joinable!(lim -> tournament (lim_tournament_id));
+diesel::joinable!(location -> country (location_country_id));
 diesel::joinable!(participant -> country (participant_country_id));
 diesel::joinable!(participant -> tournament (participant_tournament_id));
 diesel::joinable!(person -> country (person_nationality_id));

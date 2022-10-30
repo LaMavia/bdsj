@@ -15,16 +15,17 @@ create table? round (
 create table? location (
     &id,
     @_name varchar(255)!,
-    @_city varchar(255)!
+    @_city varchar(255)!,
+    &ref country_id integer!
 );
 
 create table? tournament (
     &id,
     @_name varchar(255)!,
     @_year integer!,
-    &ref location_id integer,
+    &ref location_id integer!,
     @_host_id integer! -> country_id,
-    @_round_qualifier integer,
+    @_round_qualifier_id integer,
     @_round_first_id integer! -> round_id,
     @_round_second_id integer! -> round_id
 );
