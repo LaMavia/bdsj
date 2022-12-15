@@ -9,8 +9,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    disqualification (disqualification_id) {
-        disqualification_id -> Int4,
+    disqualification (disqualification_participant_id, disqualification_round_id) {
         disqualification_participant_id -> Int4,
         disqualification_round_id -> Int4,
         disqualification_reason -> Text,
@@ -18,8 +17,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    jump (jump_id) {
-        jump_id -> Int4,
+    jump (jump_participant_id, jump_round_id) {
         jump_participant_id -> Int4,
         jump_round_id -> Int4,
         jump_score -> Int4,
@@ -28,8 +26,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    lim (lim_id) {
-        lim_id -> Int4,
+    lim (lim_country_id, lim_tournament_id) {
         lim_amount -> Int4,
         lim_country_id -> Int4,
         lim_tournament_id -> Int4,
@@ -50,6 +47,7 @@ diesel::table! {
         participant_id -> Int4,
         participant_country_id -> Int4,
         participant_tournament_id -> Int4,
+        participant_person_id -> Int4,
     }
 }
 
@@ -58,14 +56,13 @@ diesel::table! {
         person_id -> Int4,
         person_firstname -> Varchar,
         person_lastname -> Varchar,
-        person_gender -> Bpchar,
+        person_gender -> Varchar,
         person_nationality_id -> Int4,
     }
 }
 
 diesel::table! {
-    position (position_id) {
-        position_id -> Int4,
+    position (position_participant_id, position_round_id) {
         position_participant_id -> Int4,
         position_round_id -> Int4,
         position_initial -> Int4,
@@ -101,6 +98,7 @@ diesel::joinable!(lim -> country (lim_country_id));
 diesel::joinable!(lim -> tournament (lim_tournament_id));
 diesel::joinable!(location -> country (location_country_id));
 diesel::joinable!(participant -> country (participant_country_id));
+diesel::joinable!(participant -> person (participant_person_id));
 diesel::joinable!(participant -> tournament (participant_tournament_id));
 diesel::joinable!(person -> country (person_nationality_id));
 diesel::joinable!(position -> participant (position_participant_id));

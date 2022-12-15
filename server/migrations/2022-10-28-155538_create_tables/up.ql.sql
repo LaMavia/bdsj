@@ -31,47 +31,48 @@ create table? tournament (
 );
 
 create table? lim (
-    &id,
     @_amount integer! default 2,
     &ref country_id integer!,
-    &ref tournament_id integer!
+    &ref tournament_id integer!,
+    &pk (@_country_id, @_tournament_id)
 );
 
 create table? person (
     &id,
     @_firstname varchar(255)!,
     @_lastname varchar(255)!,
-    @_gender char(1)!,
+    @_gender varchar(2)!,
     @_nationality_id integer! -> country_id
 );
 
 create table? participant (
     &id,
     &ref country_id integer!,
-    &ref tournament_id integer!
+    &ref tournament_id integer!,
+    &ref person_id integer!
 );
 
 create table? position (
-    &id,
     &ref participant_id integer!,
     &ref round_id integer!,
     @_initial integer!,
-    @_final integer
+    @_final integer,
+    &pk (@_participant_id, @_round_id)
 );
 
 create table? jump (
-    &id,
     &ref participant_id integer!,
     &ref round_id integer!,
     @_score integer!,
-    @_distance integer!
+    @_distance integer!,
+    &pk (@_participant_id, @_round_id)
 );
 
 create table? disqualification (
-    &id,
     &ref participant_id integer!,
     &ref round_id integer!,
-    @_reason text!
+    @_reason text!,
+    &pk (@_participant_id, @_round_id)
 );
 
 commit;

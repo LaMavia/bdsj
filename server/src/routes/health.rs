@@ -20,7 +20,8 @@ impl ApiRoute for HealthRoute {
     fn run(
         &self,
         method: &Method,
-        headers: &http::HeaderMap,
+        _path: &String,
+        _headers: &http::HeaderMap,
         body: &String,
     ) -> Result<cgi::Response, String> {
         let res_body = serde_json::to_string(&HealthInfo {

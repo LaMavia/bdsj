@@ -68,6 +68,7 @@ open(my $src, '<', $file) or die "Could not open $file: $!";
 open(my $out, '>', $out_file) or die $!;
 
 my $re_identifier = q/[^\s]+(?<!,)/;
+my $re_identifier_list = q/\((?:\s*[^\s\(\)]+,?\s*)*\)/;
 my $re_type = q/[^\s]+(?<!,)/;
 
 my $current_table_name = "";
@@ -96,6 +97,20 @@ while(my $line = <$src>)  {
         elsif ($name =~ /ref/i) {
             $line =~ s/&ref\s*($re_identifier)\s*($re_type)/\@_$1 $2 -> $1/gi;
         }
+        # primary key
+        elsif ($name =~ /pk/i) {
+            $line =~ s/&pk\s*($re_identifier_list)/primary key $1/gi;
+        }
+        #foreign key
+        elsif ($name =~ /fk/i) {
+            ( my $own_keys
+            , my $foreign_table
+            , my $foreign_keys
+            ) = ($line =~ /&fk\s*($re_identifier_list)\s*->\s*($re_identifier)\s*($re_identifier_list)/gi);
+            $foreign_keys =~ s/@/$foreign_table/gi;
+
+            $line =~ s/&fk\s*$re_identifier_list\s*->\s*$re_identifier\s*$re_identifier_list/constraint \@_${foreign_table}_fk\n${indent}${indent}foreign key $own_keys\n${indent}${indent}references $foreign_table $foreign_keys/gi;
+        }
     }
     # table properties
     if ($line =~ /@/) {
@@ -108,6 +123,19 @@ while(my $line = <$src>)  {
     # references
     if ($line =~ /->/) {
         $line =~ s/-> ($re_identifier)_($re_identifier)/\n${indent}${indent}references $1 ($1_$2)/g;
+    }
+    # joins
+    if ($line =~ /<\|>/) {
+        $line =~ s/<\|>/inner join/gi;
+    }
+    if ($line =~ />\|</) {
+        $line =~ s/>\|</join/gi;
+    }
+    if ($line =~ /\|>/) {
+        $line =~ s/\|>/right join/gi;
+    }
+    if ($line =~ /<\|/) {
+        $line =~ s/<\|/left join/gi;
     }
 
     print $out $line;

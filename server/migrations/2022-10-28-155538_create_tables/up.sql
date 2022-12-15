@@ -36,19 +36,19 @@ create table if not exists tournament (
 );
 
 create table if not exists lim (
-    lim_id serial primary key,
     lim_amount integer not null default 2,
     lim_country_id integer not null 
         references country (country_id),
     lim_tournament_id integer not null 
-        references tournament (tournament_id)
+        references tournament (tournament_id),
+    primary key (lim_country_id, lim_tournament_id)
 );
 
 create table if not exists person (
     person_id serial primary key,
     person_firstname varchar(255) not null,
     person_lastname varchar(255) not null,
-    person_gender char(1) not null,
+    person_gender varchar(2) not null,
     person_nationality_id integer not null 
         references country (country_id)
 );
@@ -58,36 +58,38 @@ create table if not exists participant (
     participant_country_id integer not null 
         references country (country_id),
     participant_tournament_id integer not null 
-        references tournament (tournament_id)
+        references tournament (tournament_id),
+    participant_person_id integer not null 
+        references person (person_id)
 );
 
 create table if not exists position (
-    position_id serial primary key,
     position_participant_id integer not null 
         references participant (participant_id),
     position_round_id integer not null 
         references round (round_id),
     position_initial integer not null,
-    position_final integer
+    position_final integer,
+    primary key (position_participant_id, position_round_id)
 );
 
 create table if not exists jump (
-    jump_id serial primary key,
     jump_participant_id integer not null 
         references participant (participant_id),
     jump_round_id integer not null 
         references round (round_id),
     jump_score integer not null,
-    jump_distance integer not null
+    jump_distance integer not null,
+    primary key (jump_participant_id, jump_round_id)
 );
 
 create table if not exists disqualification (
-    disqualification_id serial primary key,
     disqualification_participant_id integer not null 
         references participant (participant_id),
     disqualification_round_id integer not null 
         references round (round_id),
-    disqualification_reason text not null
+    disqualification_reason text not null,
+    primary key (disqualification_participant_id, disqualification_round_id)
 );
 
 commit;

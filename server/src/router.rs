@@ -25,7 +25,7 @@ impl Method {
 pub trait ApiRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool;
 
-    fn run(&self, method: &Method, headers: &HeaderMap, body: &String) -> Result<Response, String>;
+    fn run(&self, method: &Method, path: &String, headers: &HeaderMap, body: &String) -> Result<Response, String>;
 }
 
 pub struct Router {
@@ -37,7 +37,7 @@ impl Router {
         Self { routes: vec![] }
     }
 
-    pub fn mount<T: ApiRoute + 'static>(&mut self, route: T) -> &Self {
+    pub fn mount<T: ApiRoute + 'static>(&mut self, route: T) -> &mut Self {
         self.routes.push(Box::new(route));
 
         self
@@ -71,7 +71,7 @@ impl Router {
 
         for route in self.routes.iter() {
             if route.test_route(method, &path) {
-                return route.run(method, headers, &body);
+                return route.run(method, &path, headers, &body);
             }
         }
 
