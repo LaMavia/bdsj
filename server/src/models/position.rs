@@ -1,9 +1,6 @@
-use diesel::{Queryable, QueryableByName};
+use serde::Serialize;
 
-use crate::schema::position;
-
-#[derive(Queryable, QueryableByName)]
-#[diesel(table_name = position)]
+#[derive(Serialize)]
 pub struct Position {
     pub position_participant_id: i32,
     pub position_round_id: i32,

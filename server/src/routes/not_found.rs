@@ -1,9 +1,9 @@
-use serde::Serialize;
-
 use crate::{
     api_response::ApiResponse,
     router::{ApiRoute, Method},
 };
+use async_trait::async_trait;
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct NotFoundInfo {
@@ -15,18 +15,20 @@ struct NotFoundInfo {
 #[allow(dead_code)]
 pub struct NotFoundRoute {}
 
+#[async_trait]
 impl ApiRoute for NotFoundRoute {
     fn test_route(&self, _method: &crate::router::Method, _path: &String) -> bool {
         true
     }
 
-    fn run(
+    async fn run<'a>(
         &self,
-        method: &Method,
-        path: &String,
-        _headers: &http::HeaderMap,
-        _body: &String,
+        method: &'a Method,
+        path: &'a String,
+        _headers: &'a http::HeaderMap,
+        _body: &'a String,
     ) -> Result<cgi::Response, String> {
-        ApiResponse::<String, _>::error(format!("Couldn't find path {} [{}]", path, method)).send(404, None)
+        ApiResponse::<String, _>::error(format!("Couldn't find path {} [{}]", path, method))
+            .send(404, None)
     }
 }

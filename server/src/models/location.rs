@@ -1,8 +1,6 @@
-use crate::schema::location;
-use diesel::{Queryable, QueryableByName};
+use serde::Serialize;
 
-#[derive(Queryable, QueryableByName)]
-#[diesel(table_name = location)]
+#[derive(Serialize)]
 pub struct Location {
     pub location_id: i32,
     pub location_name: String,

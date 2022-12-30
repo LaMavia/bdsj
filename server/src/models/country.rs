@@ -1,9 +1,6 @@
-use crate::schema::country;
-use diesel::{Queryable, QueryableByName};
 use serde::Serialize;
 
-#[derive(Serialize, Queryable, QueryableByName)]
-#[diesel(table_name = country)]
+#[derive(Serialize)]
 pub struct Country {
     pub country_id: i32,
     pub country_name: String,

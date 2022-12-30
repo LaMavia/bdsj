@@ -1,8 +1,6 @@
-use crate::schema::lim;
-use diesel::{Queryable, QueryableByName};
+use serde::Serialize;
 
-#[derive(Queryable, QueryableByName)]
-#[diesel(table_name = lim)]
+#[derive(Serialize)]
 pub struct Lim {
     pub lim_amount: i32,
     pub lim_country_id: i32,

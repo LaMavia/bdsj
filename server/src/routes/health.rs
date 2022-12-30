@@ -3,6 +3,7 @@ use serde::Serialize;
 
 use crate::api_response::ApiResponse;
 use crate::router::{ApiRoute, Method};
+use async_trait::async_trait;
 
 #[derive(Serialize, Debug)]
 struct HealthInfo {
@@ -12,17 +13,18 @@ struct HealthInfo {
 
 pub struct HealthRoute {}
 
+#[async_trait]
 impl ApiRoute for HealthRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool {
         *method == Method::POST && path == "health"
     }
 
-    fn run(
+    async fn run<'a>(
         &self,
-        method: &Method,
-        _path: &String,
-        _headers: &http::HeaderMap,
-        body: &String,
+        method: &'a Method,
+        _path: &'a String,
+        _headers: &'a http::HeaderMap,
+        body: &'a String,
     ) -> Result<cgi::Response, String> {
         ApiResponse::<_, String>::ok(HealthInfo {
             method: method.to_owned(),

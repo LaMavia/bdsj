@@ -1,27 +1,30 @@
-use diesel::QueryableByName;
-
 use crate::api_response::ApiResponse;
 use crate::database::Database;
-use crate::models::count::Count;
 use crate::models::country::Country;
 use crate::router::{ApiRoute, Method};
-use crate::schema::country::dsl::*;
+use async_trait::async_trait;
 
 pub struct CountriesRoute {}
 
-// impl ApiRoute for CountriesRoute {
-//     fn test_route(&self, method: &Method, path: &String) -> bool {
-//         *method == Method::GET && path == "countries"
-//     }
+#[async_trait]
+impl ApiRoute for CountriesRoute {
+    fn test_route(&self, method: &Method, path: &String) -> bool {
+        *method == Method::GET && path == "countries"
+    }
 
-//     fn run(
-//         &self,
-//         _method: &Method,
-//         _path: &String,
-//         _headers: &http::HeaderMap,
-//         _body: &String,
-//     ) -> Result<cgi::Response, String> {
-//         let mut db = Database::connect()?;
-//         // let countries = 
-//     }
-// }
+    async fn run<'a>(
+        &self,
+        _method: &'a Method,
+        _path: &'a String,
+        _headers: &'a http::HeaderMap,
+        _body: &'a String,
+    ) -> Result<cgi::Response, String> {
+        let db = Database::connect().await?;
+        let countries = sqlx::query_as!(Country, "select * from country;")
+            .fetch_all(&db.connection)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        ApiResponse::<_, String>::ok(countries).send(200, None)
+    }
+}

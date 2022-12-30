@@ -1,10 +1,10 @@
-use crate::schema::round;
-use chrono::NaiveDate;
-use diesel::{Queryable, QueryableByName};
+use chrono::serde::ts_seconds;
+use chrono::{DateTime, Utc};
+use serde::Serialize;
 
-#[derive(Queryable, QueryableByName)]
-#[diesel(table_name = round)]
+#[derive(Serialize)]
 pub struct Round {
     pub round_id: i32,
-    pub round_date: NaiveDate,
+    #[serde(with = "ts_seconds")]
+    pub round_date: DateTime<Utc>,
 }

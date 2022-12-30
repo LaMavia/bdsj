@@ -1,9 +1,6 @@
-use diesel::{Queryable, QueryableByName};
+use serde::Serialize;
 
-use crate::schema::jump;
-
-#[derive(Queryable, QueryableByName)]
-#[diesel(table_name = jump)]
+#[derive(Serialize)]
 pub struct Jump {
     pub jump_participant_id: i32,
     pub jump_round_id: i32,

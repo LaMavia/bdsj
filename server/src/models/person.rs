@@ -1,9 +1,6 @@
-use diesel::{Queryable, QueryableByName};
+use serde::Serialize;
 
-use crate::schema::person;
-
-#[derive(Queryable, QueryableByName)]
-#[diesel(table_name = person)]
+#[derive(Serialize)]
 pub struct Person {
     pub person_id: i32,
     pub person_firstname: String,

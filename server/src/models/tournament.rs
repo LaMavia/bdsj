@@ -1,8 +1,6 @@
-use crate::schema::tournament;
-use diesel::{Queryable, QueryableByName};
+use serde::Serialize;
 
-#[derive(Queryable, QueryableByName)]
-#[diesel(table_name = tournament)]
+#[derive(Serialize)]
 pub struct Tournament {
     pub tournament_id: i32,
     pub tournament_name: String,

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use crate::api_response::ApiResponse;
+use async_trait::async_trait;
 
 #[derive(Deserialize, Serialize, PartialEq, Eq, Debug, Clone, Copy)]
 pub enum Method {
@@ -36,15 +37,16 @@ impl fmt::Display for Method {
     }
 }
 
+#[async_trait]
 pub trait ApiRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool;
 
-    fn run(
+    async fn run<'a>(
         &self,
-        method: &Method,
-        path: &String,
-        headers: &HeaderMap,
-        body: &String,
+        method: &'a Method,
+        path: &'a String,
+        headers: &'a HeaderMap,
+        body: &'a String,
     ) -> Result<Response, String>;
 }
 
@@ -63,7 +65,7 @@ impl Router {
         self
     }
 
-    pub fn run(&self, req: Request) -> Result<Response, String> {
+    pub async fn run(&self, req: Request) -> Result<Response, String> {
         const QUERY_KEY: &str = "x-cgi-query-string";
 
         let body = from_utf8(req.body().as_slice())
@@ -91,7 +93,7 @@ impl Router {
 
         for route in self.routes.iter() {
             if route.test_route(method, &path) {
-                return match route.run(method, &path, headers, &body) {
+                return match route.run(method, &path, headers, &body).await {
                     Ok(res) => Ok(res),
                     Err(msg) => ApiResponse::<String, String>::error(msg).send(500, None),
                 };

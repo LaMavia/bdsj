@@ -1,11 +1,8 @@
-use diesel::{Queryable, QueryableByName};
+use serde::Serialize;
 
-use crate::schema::participant;
-
-#[derive(Queryable, QueryableByName)]
-#[diesel(table_name = participant)]
+#[derive(Serialize)]
 pub struct Participant {
     pub participant_id: i32,
     pub participant_country_id: i32,
-    pub participant_tournament_id: i32
+    pub participant_tournament_id: i32,
 }
