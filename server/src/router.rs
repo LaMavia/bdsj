@@ -3,6 +3,7 @@ use std::{collections::HashMap, str::from_utf8};
 use cgi::{Request, Response};
 use http::HeaderMap;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Deserialize, Serialize, PartialEq, Eq, Debug, Clone, Copy)]
 pub enum Method {
@@ -22,10 +23,27 @@ impl Method {
     }
 }
 
+impl fmt::Display for Method {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "{:?}", self)
+    }
+}
+
 pub trait ApiRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool;
 
-    fn run(&self, method: &Method, path: &String, headers: &HeaderMap, body: &String) -> Result<Response, String>;
+    fn run(
+        &self,
+        method: &Method,
+        path: &String,
+        headers: &HeaderMap,
+        body: &String,
+    ) -> Result<Response, String>;
 }
 
 pub struct Router {

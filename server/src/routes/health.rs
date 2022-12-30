@@ -1,7 +1,7 @@
-use cgi::string_response;
-use http::{header::CONTENT_TYPE, HeaderValue};
+use http::StatusCode;
 use serde::Serialize;
 
+use crate::api_response::ApiResponse;
 use crate::router::{ApiRoute, Method};
 
 #[derive(Serialize, Debug)]
@@ -24,17 +24,9 @@ impl ApiRoute for HealthRoute {
         _headers: &http::HeaderMap,
         body: &String,
     ) -> Result<cgi::Response, String> {
-        let res_body = serde_json::to_string(&HealthInfo {
+        ApiResponse::<_, String>::ok(HealthInfo {
             method: method.to_owned(),
             body: body.to_owned(),
-        })
-        .map_err(|e| e.to_string())?;
-
-        let mut res = string_response(200, res_body);
-
-        res.headers_mut()
-            .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-
-        Ok(res)
+        }).send(StatusCode::IM_A_TEAPOT, None)
     }
 }

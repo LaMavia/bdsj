@@ -9,7 +9,7 @@ pub fn make_router() -> Router {
     let mut router = Router::make();
 
     router.mount(HealthRoute {})
-          .mount(NotFoundRoute::new());
+          .mount(NotFoundRoute {});
 
     router
 }

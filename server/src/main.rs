@@ -7,6 +7,7 @@ pub mod models;
 mod router;
 mod routes;
 pub mod schema;
+pub mod api_response;
 
 cgi::cgi_try_main! {
     |req: Request| -> Result<Response, String> {
