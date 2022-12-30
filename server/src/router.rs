@@ -5,6 +5,8 @@ use http::HeaderMap;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use crate::api_response::ApiResponse;
+
 #[derive(Deserialize, Serialize, PartialEq, Eq, Debug, Clone, Copy)]
 pub enum Method {
     GET,
@@ -89,7 +91,10 @@ impl Router {
 
         for route in self.routes.iter() {
             if route.test_route(method, &path) {
-                return route.run(method, &path, headers, &body);
+                return match route.run(method, &path, headers, &body) {
+                    Ok(res) => Ok(res),
+                    Err(msg) => ApiResponse::<String, String>::error(msg).send(500, None),
+                };
             }
         }
 

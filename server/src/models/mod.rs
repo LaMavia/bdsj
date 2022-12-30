@@ -8,3 +8,4 @@ pub mod participant;
 pub mod position;
 pub mod jump;
 pub mod disqualification;
+pub mod count;
