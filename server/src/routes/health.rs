@@ -1,6 +1,6 @@
 use cgi::string_response;
 use http::{header::CONTENT_TYPE, HeaderValue};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::router::{ApiRoute, Method};
 
@@ -14,7 +14,7 @@ pub struct HealthRoute {}
 
 impl ApiRoute for HealthRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool {
-        *method == Method::GET && path == "health"
+        *method == Method::POST && path == "health"
     }
 
     fn run(

@@ -11,15 +11,12 @@ struct NotFoundInfo {
     body: String,
 }
 
-pub struct NotFoundRoute {
-    path: String,
-}
+#[allow(dead_code)]
+pub struct NotFoundRoute {}
 
 impl NotFoundRoute {
     pub fn new() -> Self {
-        NotFoundRoute {
-            path: "".to_string(),
-        }
+        NotFoundRoute {}
     }
 }
 
@@ -36,7 +33,7 @@ impl ApiRoute for NotFoundRoute {
         body: &String,
     ) -> Result<cgi::Response, String> {
         let mut res = string_response(
-            200,
+            404,
             &serde_json::to_string(&NotFoundInfo {
                 body: body.to_owned(),
                 path: path.to_owned(),
