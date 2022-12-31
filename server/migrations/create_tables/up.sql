@@ -26,6 +26,7 @@ create table if not exists tournament (
     tournament_year integer not null,
     tournament_location_id integer not null 
         references location (location_id),
+    tournament_stage integer not null,
     tournament_host_id integer not null 
         references country (country_id),
     tournament_round_qualifier_id integer,

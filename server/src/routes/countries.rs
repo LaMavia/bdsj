@@ -20,11 +20,11 @@ impl ApiRoute for CountriesRoute {
         _body: &'a String,
     ) -> Result<cgi::Response, String> {
         let db = Database::connect().await?;
-        let countries = sqlx::query_as!(Country, "select * from country;")
+        let countries = sqlx::query!("select count(*) from country;")
             .fetch_all(&db.connection)
             .await
             .map_err(|e| e.to_string())?;
 
-        ApiResponse::<_, String>::ok(countries).send(200, None)
+        ApiResponse::<_, String>::ok(countries.get(0).unwrap().count).send(200, None)
     }
 }
