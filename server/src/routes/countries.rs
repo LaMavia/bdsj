@@ -1,8 +1,8 @@
 use crate::api_response::ApiResponse;
 use crate::database::Database;
-use crate::models::country::Country;
 use crate::router::{ApiRoute, Method};
 use async_trait::async_trait;
+use std::collections::HashMap;
 
 pub struct CountriesRoute {}
 
@@ -17,6 +17,7 @@ impl ApiRoute for CountriesRoute {
         _method: &'a Method,
         _path: &'a String,
         _headers: &'a http::HeaderMap,
+        _cookies: &'a HashMap<String, String>,
         _body: &'a String,
     ) -> Result<cgi::Response, String> {
         let db = Database::connect().await?;

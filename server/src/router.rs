@@ -1,7 +1,10 @@
-use std::{collections::HashMap, str::from_utf8};
+use std::{
+    collections::HashMap,
+    str::{from_utf8, Split},
+};
 
 use cgi::{Request, Response};
-use http::HeaderMap;
+use http::{header::COOKIE, HeaderMap};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -46,6 +49,7 @@ pub trait ApiRoute {
         method: &'a Method,
         path: &'a String,
         headers: &'a HeaderMap,
+        cookies: &'a HashMap<String, String>,
         body: &'a String,
     ) -> Result<Response, String>;
 }
@@ -65,6 +69,25 @@ impl Router {
         self
     }
 
+    fn parse_cookies<'a>(headers: &'a HeaderMap) -> HashMap<String, String> {
+        let mut cookies = HashMap::new();
+        match headers.get(COOKIE) {
+            Some(qv) => {
+                for def in qv.to_str().unwrap().to_owned().split("; ").into_iter() {
+                    match def.split_once("=") {
+                        Some((key, val)) => {
+                            cookies.insert(key.to_owned(), val.to_owned());
+                        }
+                        None => {}
+                    }
+                }
+            }
+            None => {}
+        }
+
+        cookies
+    }
+
     pub async fn run(&self, req: Request) -> Result<Response, String> {
         const QUERY_KEY: &str = "x-cgi-query-string";
 
@@ -73,6 +96,7 @@ impl Router {
             .to_string();
         let method = &Method::from_http(req.method());
         let headers = req.headers();
+        let cookies = Self::parse_cookies(headers);
 
         let mut query = HashMap::<String, String>::new();
         for (k, v) in querystring::querify(
@@ -93,7 +117,7 @@ impl Router {
 
         for route in self.routes.iter() {
             if route.test_route(method, &path) {
-                return match route.run(method, &path, headers, &body).await {
+                return match route.run(method, &path, headers, &cookies, &body).await {
                     Ok(res) => Ok(res),
                     Err(msg) => ApiResponse::<String, String>::error(msg).send(500, None),
                 };

@@ -2,9 +2,8 @@
 begin;
 
 create table? country (
-    &id,
     @_name varchar(255)!,
-    @_name_short char(2)!
+    @_code char(2)! primary key
 );
 
 create table? round (
@@ -16,7 +15,7 @@ create table? location (
     &id,
     @_name varchar(255)!,
     @_city varchar(255)!,
-    &ref country_id integer!
+    &ref country_code char(2)!
 );
 
 create table? tournament (
@@ -25,7 +24,7 @@ create table? tournament (
     @_year integer!,
     &ref location_id integer!,
     @_stage integer!,
-    @_host_id integer! -> country_id,
+    @_host char(2)! -> country_code,
     @_round_qualifier_id integer,
     @_round_first_id integer! -> round_id,
     @_round_second_id integer! -> round_id
@@ -33,9 +32,9 @@ create table? tournament (
 
 create table? lim (
     @_amount integer! default 2,
-    &ref country_id integer!,
+    &ref country_code char(2)!,
     &ref tournament_id integer!,
-    &pk (@_country_id, @_tournament_id)
+    &pk (@_country_code, @_tournament_id)
 );
 
 create table? person (
@@ -43,12 +42,12 @@ create table? person (
     @_firstname varchar(255)!,
     @_lastname varchar(255)!,
     @_gender varchar(2)!,
-    @_nationality_id integer! -> country_id
+    @_nationality char(2)! -> country_code
 );
 
 create table? participant (
     &id,
-    &ref country_id integer!,
+    &ref country_code char(2)!,
     &ref tournament_id integer!,
     &ref person_id integer!
 );

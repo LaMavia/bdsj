@@ -1,4 +1,7 @@
-use http::StatusCode;
+use std::collections::HashMap;
+
+use http::header::{COOKIE, HOST, SET_COOKIE, ORIGIN, HeaderName};
+use http::{HeaderMap, HeaderValue, StatusCode};
 use serde::Serialize;
 
 use crate::api_response::ApiResponse;
@@ -22,13 +25,34 @@ impl ApiRoute for HealthRoute {
     async fn run<'a>(
         &self,
         method: &'a Method,
-        _path: &'a String,
-        _headers: &'a http::HeaderMap,
+        path: &'a String,
+        headers: &'a http::HeaderMap,
+        cookies: &'a HashMap<String, String>,
         body: &'a String,
     ) -> Result<cgi::Response, String> {
+        let mut res_headers = HeaderMap::new();
+        res_headers.insert(
+            SET_COOKIE,
+            HeaderValue::from_str(
+                format!(
+                    "session_token={}; Domain={}",
+                    path,
+                    headers.get(ORIGIN).map(|h| h.to_str().unwrap()).unwrap_or("")
+                )
+                .as_str(),
+            )
+            .unwrap(),
+        );
+
         ApiResponse::<_, String>::ok(HealthInfo {
             method: method.to_owned(),
-            body: body.to_owned(),
-        }).send(StatusCode::IM_A_TEAPOT, None)
+            body: format!(
+                "{}+{}",
+                body,
+                cookies.get("session_token").unwrap_or(&"".to_string())
+            )
+            .to_owned(),
+        })
+        .send(StatusCode::IM_A_TEAPOT, Option::Some(res_headers))
     }
 }

@@ -11,4 +11,4 @@ sudo cp ./cgi-bin/api.py $server_path/api.py
 sudo cp ./cgi-bin/view.py $server_path/view.py
 sudo cp ./target/release/server $server_path/bdsj
 sudo cp ./server/.env $server_path/.env
-sudo cp ./client/build/* -r $server_path/public/
+sudo cp ./client/dist/* -r $server_path/public/
