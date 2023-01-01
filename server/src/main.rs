@@ -7,6 +7,7 @@ extern crate cgi;
 
 pub mod api_response;
 pub mod database;
+pub mod funcs;
 pub mod models;
 mod router;
 mod routes;

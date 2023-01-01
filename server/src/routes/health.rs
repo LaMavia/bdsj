@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
-use http::header::{COOKIE, HOST, SET_COOKIE, ORIGIN, HeaderName};
+use http::header::{HeaderName, COOKIE, HOST, ORIGIN, SET_COOKIE};
 use http::{HeaderMap, HeaderValue, StatusCode};
 use serde::Serialize;
 
 use crate::api_response::ApiResponse;
+use crate::database::Database;
+use crate::funcs::auth;
 use crate::router::{ApiRoute, Method};
 use async_trait::async_trait;
 
@@ -25,35 +27,19 @@ impl ApiRoute for HealthRoute {
     async fn run<'a>(
         &self,
         method: &'a Method,
-        path: &'a String,
-        headers: &'a http::HeaderMap,
+        _path: &'a String,
+        _headers: &'a http::HeaderMap,
         cookies: &'a HashMap<String, String>,
         body: &'a String,
     ) -> Result<cgi::Response, String> {
-        let mut res_headers = HeaderMap::new();
-        res_headers.insert(
-            SET_COOKIE,
-            HeaderValue::from_str(
-                format!(
-                    "session_token={}; Domain={}",
-                    path,
-                    headers.get(HOST).map(|h| h.to_str().unwrap()).unwrap_or("")
-                )
-                .as_str(),
-            )
-            .unwrap(),
-        );
-
-        ApiResponse::<_, String>::ok(HealthInfo {
-            method: method.to_owned(),
-            body: format!(
-                "{}+{} @ {}",
-                body,
-                cookies.get("session_token").unwrap_or(&"".to_string()),
-                path
-            )
-            .to_owned(),
-        })
-        .send(StatusCode::IM_A_TEAPOT, Option::Some(res_headers))
+        let db = Database::connect().await?;
+        match auth::auth_session_from_cookies(&db, &cookies, &"1 day".to_string()).await {
+            Ok(()) => ApiResponse::<HealthInfo, String>::ok(HealthInfo {
+                method: method.to_owned(),
+                body: body.to_owned(),
+            })
+            .send(200, None),
+            Err(e_res) => e_res,
+        }
     }
 }

@@ -11,5 +11,7 @@ drop table if exists participant cascade;
 drop table if exists position cascade;
 drop table if exists jump cascade;
 drop table if exists disqualification cascade;
+drop table if exists auth cascade;
+drop table if exists sess cascade;
 
 commit;
