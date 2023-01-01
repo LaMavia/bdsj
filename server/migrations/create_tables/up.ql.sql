@@ -75,4 +75,33 @@ create table? disqualification (
     &pk (@_participant_id, @_round_id)
 );
 
+create table? auth (
+    &id,
+    @_pass text!
+);
+
+create table? sess (
+    &id,
+    @_expires_at timestamp,
+    &ref auth_id integer!
+);
+
+create or replace function authenticate(
+  in session_id integer, 
+  in duration interval) returns void as $$
+  declare 
+    found_count integer := 0;
+  begin
+    delete from sess 
+    where sess_expires_at < current_date;
+    
+    select count(sess_id) into found_count 
+    from sess where sess_id = session_id;
+
+    if found_count = 0 then
+      raise exception 'INVALID SESSION ID: %', session_id;
+    end if;
+  end
+  $$ language plpgsql;
+
 commit;

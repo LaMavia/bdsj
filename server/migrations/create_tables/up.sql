@@ -92,4 +92,34 @@ create table if not exists disqualification (
     primary key (disqualification_participant_id, disqualification_round_id)
 );
 
+create table if not exists auth (
+    auth_id serial primary key,
+    auth_pass text not null
+);
+
+create table if not exists sess (
+    sess_id serial primary key,
+    sess_expires_at timestamp,
+    sess_auth_id integer not null 
+        references auth (auth_id)
+);
+
+create or replace function authenticate(
+  in session_id integer, 
+  in duration interval) returns void as $$
+  declare 
+    found_count integer := 0;
+  begin
+    delete from sess 
+    where sess_expires_at < current_date;
+    
+    select count(sess_id) into found_count 
+    from sess where sess_id = session_id;
+
+    if found_count = 0 then
+      raise exception 'INVALID SESSION ID: %', session_id;
+    end if;
+  end
+  $$ language plpgsql;
+
 commit;
