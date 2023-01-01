@@ -73,7 +73,7 @@ impl Router {
         let mut cookies = HashMap::new();
         match headers.get(COOKIE) {
             Some(qv) => {
-                for def in qv.to_str().unwrap().to_owned().split("; ").into_iter() {
+                for def in qv.to_str().unwrap().split("; ").into_iter() {
                     match def.split_once("=") {
                         Some((key, val)) => {
                             cookies.insert(key.to_owned(), val.to_owned());

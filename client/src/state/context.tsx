@@ -20,5 +20,5 @@ export function make_ctx<A>(val: Partial<A>) {
     )
     return <ctx.Provider value={{ state, dispatch }} {...props} />
   }
-  return [ctx, Provider] as const
+  return [ctx, Provider] as [typeof ctx, typeof Provider]
 }
