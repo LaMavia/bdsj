@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::{api_response::ApiResponse, database::Database};
-use serde::Serialize;
 use sqlx::Row;
 
 pub(crate) async fn auth_session<T: ToString>(

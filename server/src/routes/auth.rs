@@ -5,9 +5,8 @@ use crate::{
     api_response::ApiResponse,
     database::Database,
     funcs::auth,
-    router::{ApiRoute, Method},
+    router::{ApiRoute, Method, RouteContext},
 };
-use std::collections::HashMap;
 pub struct AuthRoute {}
 
 #[async_trait]
@@ -18,15 +17,11 @@ impl ApiRoute for AuthRoute {
 
     async fn run<'a>(
         &self,
-        _method: &'a Method,
-        _path: &'a String,
-        _headers: &'a http::HeaderMap,
-        _cookies: &'a HashMap<String, String>,
-        body: &'a String,
+        ctx: &'a RouteContext
     ) -> Result<cgi::Response, String> {
         let db = Database::connect().await?;
 
-        match auth::start_session(&db, body, "1 hour").await {
+        match auth::start_session(&db, &ctx.body, "1 hour").await {
             Ok(session_key) => {
                 let mut res_headers = HeaderMap::new();
                 res_headers.insert(

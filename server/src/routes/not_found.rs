@@ -1,10 +1,9 @@
 use crate::{
     api_response::ApiResponse,
-    router::{ApiRoute, Method},
+    router::{ApiRoute, Method, RouteContext},
 };
 use async_trait::async_trait;
 use serde::Serialize;
-use std::collections::HashMap;
 
 #[derive(Serialize)]
 struct NotFoundInfo {
@@ -22,15 +21,8 @@ impl ApiRoute for NotFoundRoute {
         true
     }
 
-    async fn run<'a>(
-        &self,
-        method: &'a Method,
-        path: &'a String,
-        _headers: &'a http::HeaderMap,
-        _cookies: &'a HashMap<String, String>,
-        _body: &'a String,
-    ) -> Result<cgi::Response, String> {
-        ApiResponse::<String, _>::error(format!("Couldn't find path {} [{}]", path, method))
+    async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
+        ApiResponse::<String, _>::error(format!("Couldn't find path {} [{}]", ctx.path, ctx.method))
             .send(404, None)
     }
 }

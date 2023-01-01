@@ -40,18 +40,19 @@ impl fmt::Display for Method {
     }
 }
 
+pub struct RouteContext {
+    pub method: Method,
+    pub path: String,
+    pub headers: http::HeaderMap,
+    pub cookies: HashMap<String, String>,
+    pub body: String,
+}
+
 #[async_trait]
 pub trait ApiRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool;
 
-    async fn run<'a>(
-        &self,
-        method: &'a Method,
-        path: &'a String,
-        headers: &'a HeaderMap,
-        cookies: &'a HashMap<String, String>,
-        body: &'a String,
-    ) -> Result<Response, String>;
+    async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<Response, String>;
 }
 
 pub struct Router {
@@ -115,9 +116,17 @@ impl Router {
             .unwrap_or(&"/".to_string())
             .to_owned();
 
+        let ctx = RouteContext {
+            method: method.to_owned(),
+            path: path.clone(),
+            headers: headers.to_owned(),
+            cookies,
+            body,
+        };
+
         for route in self.routes.iter() {
             if route.test_route(method, &path) {
-                return match route.run(method, &path, headers, &cookies, &body).await {
+                return match route.run(&ctx).await {
                     Ok(res) => Ok(res),
                     Err(msg) => ApiResponse::<String, String>::error(msg).send(500, None),
                 };
