@@ -1,26 +1,15 @@
 use crate::{
     api_response::ApiResponse,
     database::Database,
-    funcs::{auth, filter::FilterBuilder},
+    funcs::filter::FilterBuilder,
     models::tournament::Tournament,
     router::{ApiRoute, Method, RouteContext},
 };
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgStatement, Postgres, QueryBuilder, Statement};
+use serde::Deserialize;
+use sqlx::Postgres;
 
 pub struct GetRoute;
-// create table? tournament (
-//     &id,
-//     @_name varchar(255)!,
-//     @_year integer!,
-//     &ref location_id integer!,
-//     @_stage integer!,
-//     @_host char(2)! -> country_code,
-//     @_round_qualifier_id integer,
-//     @_round_first_id integer! -> round_id,
-//     @_round_second_id integer! -> round_id
-// );
 #[derive(Deserialize)]
 struct Body {
     names: Option<Vec<String>>,
@@ -30,16 +19,10 @@ struct Body {
     hosts: Option<Vec<String>>,
 }
 
-#[derive(Serialize)]
-struct TestR {
-    query: String,
-    result: Vec<Tournament>,
-}
-
 #[async_trait]
 impl ApiRoute for GetRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool {
-        *method == Method::GET && path == "tournaments/get"
+        *method == Method::GET && path == "tournament/get"
     }
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {

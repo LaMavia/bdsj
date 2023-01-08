@@ -13,6 +13,7 @@ pub enum Method {
     GET,
     POST,
     DELETE,
+    PUT
 }
 
 impl Method {
@@ -21,6 +22,7 @@ impl Method {
             http::Method::GET => Method::GET,
             http::Method::DELETE => Method::DELETE,
             http::Method::POST => Method::POST,
+            http::Method::PUT => Method::PUT,
             _ => Method::GET,
         }
     }
@@ -60,6 +62,10 @@ impl Router {
         self.routes.push(Box::new(route));
 
         self
+    }
+
+    pub fn mount_pack<T: Mounter>(&mut self, pack: T) -> &mut Self {
+        pack.mount(self)
     }
 
     fn parse_cookies<'a>(headers: &'a HeaderMap) -> HashMap<String, String> {
@@ -132,5 +138,5 @@ impl Router {
 }
 
 pub trait Mounter {
-    fn mount(router: &mut Router) -> &Router;
+    fn mount(self, router: &mut Router) -> &mut Router;
 }

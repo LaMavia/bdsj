@@ -1,15 +1,7 @@
-use std::{fmt::Display, str::from_utf8};
-
-use sqlx::{
-    database::HasArguments,
-    postgres::PgArgumentBuffer,
-    query::{Query, QueryAs},
-    query_builder::Separated,
-    Database, Encode, Execute, FromRow, IntoArguments, QueryBuilder, Type,
-};
+use sqlx::{database::HasArguments, query::QueryAs, Database, FromRow};
 
 pub struct FilterBuilder {
-    builder: String,
+    query: String,
     table: String,
     count: usize,
 }
@@ -21,10 +13,26 @@ pub trait Encodable {
 impl FilterBuilder {
     pub fn new<S: ToString, R: ToString>(table: R, query: S) -> Self {
         Self {
-            builder: query.to_string(),
+            query: query.to_string(),
             table: table.to_string(),
             count: 0,
         }
+    }
+
+    fn gen_fragment<T: Encodable>(vs: Vec<T>) -> String {
+        let mut list = "(".to_string();
+        let mut count = 0;
+
+        for v in vs.iter() {
+            if count > 0 {
+                list.push_str(", ");
+            }
+            count += 1;
+            list.push_str(v.encode_to_str().as_str());
+        }
+        list.push_str(")");
+
+        list
     }
 
     pub fn add<S, T>(&mut self, column: S, vs: Option<Vec<T>>) -> &mut Self
@@ -33,30 +41,18 @@ impl FilterBuilder {
         T: Encodable,
     {
         if self.count > 0 {
-            self.builder.push_str(" and ");
+            self.query.push_str(" and ");
         }
         self.count += 1;
 
         match vs {
             Some(vs) => {
-                self.builder
+                self.query
                     .push_str(format!("{}_{} in ", self.table, column.to_string()).as_str());
-                let mut list = "(".to_string();
-
-                let mut count = 0;
-
-                for v in vs.iter() {
-                    if count > 0 {
-                        list.push_str(", ");
-                    }
-                    count += 1;
-                    list.push_str(v.encode_to_str().as_str());
-                }
-                list.push_str(")");
-                self.builder.push_str(list.as_str());
+                self.query.push_str(Self::gen_fragment(vs).as_str());
             }
             None => {
-                self.builder.push_str("true");
+                self.query.push_str("true");
             }
         }
 
@@ -64,15 +60,17 @@ impl FilterBuilder {
     }
 
     pub fn sql(&self) -> String {
-        self.builder.clone()
+        self.query.clone()
     }
 
-    pub fn build_query_as<'q, DB, T>(&'q self) -> QueryAs<'q, DB, T, <DB as HasArguments<'q>>::Arguments> 
+    pub fn build_query_as<'q, DB, T>(
+        &'q self,
+    ) -> QueryAs<'q, DB, T, <DB as HasArguments<'q>>::Arguments>
     where
         DB: Database,
-        for<'r> T: FromRow<'r, <DB as Database>::Row>
+        for<'r> T: FromRow<'r, <DB as Database>::Row>,
     {
-        sqlx::query_as::<DB, T>(&self.builder)
+        sqlx::query_as::<DB, T>(&self.query)
     }
 }
 
@@ -81,6 +79,7 @@ impl Encodable for i32 {
         format!("{}", self)
     }
 }
+
 impl Encodable for String {
     fn encode_to_str(&self) -> String {
         format!("'{}'", self)

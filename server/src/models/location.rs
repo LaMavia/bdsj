@@ -1,6 +1,12 @@
 use serde::Serialize;
 
-#[derive(Serialize)]
+// create table? location (
+//     &id,
+//     @_name varchar(255)!,
+//     @_city varchar(255)!,
+//     &ref country_code char(2)!
+// );
+#[derive(Serialize, sqlx::FromRow)]
 pub struct Location {
     pub location_id: i32,
     pub location_name: String,

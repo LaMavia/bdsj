@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{api_response::ApiResponse, database::Database, router::RouteContext};
 use sqlx::Row;
 

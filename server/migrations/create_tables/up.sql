@@ -28,10 +28,11 @@ create table if not exists tournament (
     tournament_stage integer not null,
     tournament_host char(2) not null 
         references country (country_code),
-    tournament_round_qualifier_id integer,
-    tournament_round_first_id integer not null 
+    tournament_round_qualifier_id integer 
         references round (round_id),
-    tournament_round_second_id integer not null 
+    tournament_round_first_id integer 
+        references round (round_id),
+    tournament_round_second_id integer 
         references round (round_id)
 );
 
@@ -103,6 +104,9 @@ create table if not exists sess (
     sess_auth_id integer not null 
         references auth (auth_id)
 );
+
+
+-- functions --
 
 create or replace function authenticate(in session_id text, in duration interval) 
   returns void as $$

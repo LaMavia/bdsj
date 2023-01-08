@@ -25,9 +25,9 @@ create table? tournament (
     &ref location_id integer!,
     @_stage integer!,
     @_host char(2)! -> country_code,
-    @_round_qualifier_id integer,
-    @_round_first_id integer! -> round_id,
-    @_round_second_id integer! -> round_id
+    @_round_qualifier_id integer -> round_id,
+    @_round_first_id integer -> round_id,
+    @_round_second_id integer -> round_id
 );
 
 create table? lim (
