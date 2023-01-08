@@ -17,7 +17,7 @@ impl ApiRoute for EndSessionRoute {
         let mut res_headers = HeaderMap::new();
         res_headers.insert(
             SET_COOKIE,
-            HeaderValue::from_str("session_key=; expires=Thu, 01 Jan 1970 00:00:00 GMT").unwrap(),
+            HeaderValue::from_str("session_key=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/").unwrap(),
         );
 
         ApiResponse::<(), ()>::ok(&ctx.headers, ()).send(200, Option::Some(res_headers))

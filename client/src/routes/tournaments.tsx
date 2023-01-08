@@ -11,13 +11,42 @@ import {
   Typography,
 } from '@mui/material'
 import { Box } from '@mui/system'
-import React, { ComponentProps, useContext } from 'react'
+import React, { ComponentProps, useContext, useEffect, useState } from 'react'
+import { ApiResponse, TournamentInfo } from '../api'
+import { API_URL } from '../config'
 import { getGlobalContext, isAuth } from '../state/global'
 
 export interface TournamentsRouteProps {}
 
 export const TournamentsRoute = ({}: TournamentsRouteProps) => {
-  const isValidated = isAuth()
+  const auth = isAuth()
+  const [loading, setLoading] = useState(true)
+  const [showAlert, setShowAlert] = useState(false)
+  const [alertMsg, setAlertMsg] = useState('')
+  const [tournaments, setTournaments] = useState<TournamentInfo[]>([])
+
+  const closeAlert = () => {
+    setShowAlert(false)
+  }
+
+  // onMount
+  useEffect(() => {
+    fetch(`${API_URL}?path=tournament/get`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+      .then(r => r.json())
+      .then((res: ApiResponse<TournamentInfo[], string>) => {
+        setLoading(false)
+        if (!res.ok) {
+          setAlertMsg(res.error)
+          setShowAlert(true)
+        } else {
+          closeAlert()
+          setTournaments(res.data)
+        }
+      })
+  }, [])
 
   return (
     <Box
@@ -40,7 +69,7 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
                 component="span">
                 Turnieje
               </Typography>
-              {isValidated && <Button variant="contained">Dodaj</Button>}
+              {auth && <Button variant="contained">Dodaj</Button>}
             </FormGroup>
           </Paper>
           <Paper elevation={5}>

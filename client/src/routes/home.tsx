@@ -14,7 +14,8 @@ import {
 } from '@mui/material'
 import { ComponentProps, MouseEventHandler, useState } from 'react'
 import { Navigate } from 'react-router'
-import { AuthApiResponse } from '../api'
+import { ApiResponse, AuthApiResponse } from '../api'
+import { Tile } from '../components/Tile'
 import { API_URL } from '../config'
 
 interface AuthPopupParams {
@@ -35,11 +36,11 @@ const AuthPopup = ({ show, handleClose, redirectTo }: AuthPopupParams) => {
     e.preventDefault()
 
     setIsLoading(true)
-    const uri = `${API_URL}/?path=auth`
+    const uri = `${API_URL}?path=auth`
     fetch(uri, {
       body: pass,
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
     })
       .then(res => res.json())
       .then((res: AuthApiResponse) => {
@@ -111,29 +112,36 @@ const AuthPopup = ({ show, handleClose, redirectTo }: AuthPopupParams) => {
   )
 }
 
-function RawItem(props: ComponentProps<typeof Paper>) {
-  const StyledButton = styled(Button)(({ theme }) => ({
-    height: '100%',
-    width: '100%',
-    padding: '0 20px',
-  }))
-  return (
-    <Paper {...props}>
-      <StyledButton>{props.children}</StyledButton>
-    </Paper>
-  )
-}
-
 export const HomeRoute = () => {
-  const Item = styled(RawItem)(({ theme }) => ({
-    ...theme.typography.body2,
-    textAlign: 'center',
-    color: theme.palette.text.secondary,
-    background: theme.palette.background.default,
-    height: 100,
-    lineHeight: '100px',
-  }))
   const [showPass, setShowPass] = useState(false)
+  const [showAlert, setShowAlert] = useState(false)
+  const [alertMsg, setAlertMsg] = useState('')
+  const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info')
+  const [redirect, setRedirect] = useState(false)
+  const closeAlert = () => {
+    setShowAlert(false)
+  }
+
+  const onViewerClick = () => {
+    fetch(`${API_URL}?path=end_session`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(res => {
+        if (res.status === 200) {
+          setRedirect(true)
+        } else {
+          res.json().then((r: ApiResponse<null, string>) => {
+            setAlertSeverity('warning')
+            setAlertMsg(r.error)
+          })
+        }
+      })
+      .catch((e: TypeError) => {
+        setAlertSeverity('error')
+        setAlertMsg(e.message)
+      })
+  }
 
   return (
     <>
@@ -144,7 +152,7 @@ export const HomeRoute = () => {
           gridTemplateColumns: { md: '1fr 1fr' },
           gap: 2,
         }}>
-        <Item
+        <Tile
           elevation={2}
           onClick={e => {
             e.stopPropagation()
@@ -152,16 +160,33 @@ export const HomeRoute = () => {
             setShowPass(true)
           }}>
           Organizatorzy
-        </Item>
-        <Item elevation={2}>Widzowie</Item>
+        </Tile>
+        <Tile
+          elevation={2}
+          onClick={e => {
+            e.stopPropagation()
+            e.preventDefault()
+            onViewerClick()
+          }}>
+          Widzowie
+        </Tile>
       </Box>
       <AuthPopup
         show={showPass}
-        redirectTo={'/tournaments'}
+        redirectTo={'./choice_panel'}
         handleClose={() => {
           setShowPass(false)
         }}
       />
+      <Snackbar open={showAlert} autoHideDuration={6000} onClose={closeAlert}>
+        <Alert
+          onClose={closeAlert}
+          severity={alertSeverity}
+          sx={{ width: '100%' }}>
+          {alertMsg}
+        </Alert>
+      </Snackbar>
+      {redirect && <Navigate to={'./choice_panel'} />}
     </>
   )
 }

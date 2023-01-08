@@ -8,6 +8,8 @@ import { getGlobalProvider } from './state/global'
 import { HomeRoute } from './routes/home'
 import { createTheme, ThemeProvider } from '@mui/material'
 import { TournamentsRoute } from './routes/tournaments'
+import './vite-env.d.ts'
+import { ChoicePanelRoute } from './routes/choice_panel'
 
 const router = createHashRouter([
   {
@@ -18,6 +20,10 @@ const router = createHashRouter([
       {
         path: '/',
         element: <HomeRoute />,
+      },
+      {
+        path: '/choice_panel',
+        element: <ChoicePanelRoute />,
       },
       {
         path: '/tournaments',
