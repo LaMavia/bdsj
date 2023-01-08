@@ -22,7 +22,7 @@ impl ApiRoute for NotFoundRoute {
     }
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
-        ApiResponse::<String, _>::error(format!("Couldn't find path {} [{}]", ctx.path, ctx.method))
+        ApiResponse::<String, _>::error(&ctx.headers, format!("Couldn't find path {} [{}]", ctx.path, ctx.method))
             .send(404, None)
     }
 }

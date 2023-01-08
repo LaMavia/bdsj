@@ -15,10 +15,7 @@ impl ApiRoute for AuthRoute {
         *method == Method::POST && path == "auth"
     }
 
-    async fn run<'a>(
-        &self,
-        ctx: &'a RouteContext
-    ) -> Result<cgi::Response, String> {
+    async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
         let db = Database::connect().await?;
 
         match auth::start_session(&db, &ctx.body, "1 hour").await {
@@ -26,12 +23,16 @@ impl ApiRoute for AuthRoute {
                 let mut res_headers = HeaderMap::new();
                 res_headers.insert(
                     SET_COOKIE,
-                    HeaderValue::from_str(format!("session_key={}", session_key).as_str()).unwrap(),
+                    HeaderValue::from_str(
+                        format!("session_key={}; SameSite=Strict; Path=/", session_key).as_str(),
+                    )
+                    .unwrap(),
                 );
 
-                ApiResponse::<String, String>::ok(session_key).send(200, Option::Some(res_headers))
+                ApiResponse::<String, String>::ok(&ctx.headers, session_key)
+                    .send(200, Option::Some(res_headers))
             }
-            Err(e) => ApiResponse::<i64, String>::error(e).send(401, None),
+            Err(e) => ApiResponse::<i64, String>::error(&ctx.headers, e).send(401, None),
         }
     }
 }

@@ -19,16 +19,7 @@ let context: Context<{
 
 const init = () => {
   if (provider === undefined) {
-    const session_tuple = document.cookie
-      .split(';')
-      .map(def => def.split('=') as [string, string])
-      .filter(([key, _]) => key == 'session_key')
-    
-    console.dir(session_tuple)
-
-    const [ctx, new_provider] = make_ctx<GlobalState>(
-      session_tuple.length == 1 ? { session_key: session_tuple[0][1] } : {},
-    )
+    const [ctx, new_provider] = make_ctx<GlobalState>({})
 
     provider = new_provider
     context = ctx
@@ -43,4 +34,13 @@ export const getGlobalProvider = () => {
 export const getGlobalContext = () => {
   init()
   return context
+}
+
+export const isAuth = () => {
+  const session_tuple = document.cookie
+    .split(';')
+    .map(def => def.split('=') as [string, string])
+    .filter(([key, _]) => key == 'session_key')
+
+  return session_tuple && !!session_tuple[0]
 }

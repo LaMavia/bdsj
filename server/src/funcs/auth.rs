@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{api_response::ApiResponse, database::Database};
+use crate::{api_response::ApiResponse, database::Database, router::RouteContext};
 use sqlx::Row;
 
 pub(crate) async fn auth_session<T: ToString>(
@@ -17,19 +17,23 @@ pub(crate) async fn auth_session<T: ToString>(
         .map_err(|e| e.to_string())
 }
 
-pub(crate) async fn auth_session_from_cookies<T: ToString>(
+pub(crate) async fn auth_session_from_cookies(
     db: &Database,
-    cookies: &HashMap<String, String>,
-    duration: &T,
+    ctx: &RouteContext
 ) -> Result<(), Result<cgi::Response, String>> {
-    match cookies.get("session_key") {
+    let duration = &"1 day".to_string();
+    match ctx.cookies.get("session_key") {
         Some(session_key) => match auth_session(&db, session_key, duration).await {
             Ok(()) => Ok(()),
-            Err(e) => Err(ApiResponse::<String, String>::error(e).send(403, None)),
+            Err(e) => {
+                Err(ApiResponse::<String, String>::error(&ctx.headers, e).send(403, None))
+            }
         },
-        None => Err(
-            ApiResponse::<String, String>::error("user not in session".to_string()).send(403, None),
-        ),
+        None => Err(ApiResponse::<String, String>::error(
+            &ctx.headers,
+            "user not in session".to_string(),
+        )
+        .send(403, None)),
     }
 }
 

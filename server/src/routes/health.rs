@@ -21,8 +21,8 @@ impl ApiRoute for HealthRoute {
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
         let db = Database::connect().await?;
-        match auth::auth_session_from_cookies(&db, &ctx.cookies, &"1 day".to_string()).await {
-            Ok(()) => ApiResponse::<HealthInfo, String>::ok(HealthInfo {
+        match auth::auth_session_from_cookies(&db, &ctx).await {
+            Ok(()) => ApiResponse::<HealthInfo, String>::ok(&ctx.headers, HealthInfo {
                 method: ctx.method.to_owned(),
                 body: ctx.body.to_owned(),
             })

@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    str::{from_utf8, Split},
-};
+use std::{collections::HashMap, str::from_utf8};
 
 use cgi::{Request, Response};
 use http::{header::COOKIE, HeaderMap};
@@ -30,12 +27,7 @@ impl Method {
 }
 
 impl fmt::Display for Method {
-    // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Write strictly the first element into the supplied output
-        // stream: `f`. Returns `fmt::Result` which indicates whether the
-        // operation succeeded or failed. Note that `write!` uses syntax which
-        // is very similar to `println!`.
         write!(f, "{:?}", self)
     }
 }
@@ -128,11 +120,17 @@ impl Router {
             if route.test_route(method, &path) {
                 return match route.run(&ctx).await {
                     Ok(res) => Ok(res),
-                    Err(msg) => ApiResponse::<String, String>::error(msg).send(500, None),
+                    Err(msg) => {
+                        ApiResponse::<String, String>::error(&ctx.headers, msg).send(500, None)
+                    }
                 };
             }
         }
 
         Err(format!("Path {path} not found"))
     }
+}
+
+pub trait Mounter {
+    fn mount(router: &mut Router) -> &Router;
 }

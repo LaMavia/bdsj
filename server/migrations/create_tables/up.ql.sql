@@ -86,6 +86,9 @@ create table? sess (
     &ref auth_id integer!
 );
 
+
+-- functions --
+
 create or replace function authenticate(in session_id text, in duration interval) 
   returns void as $$
   declare 
