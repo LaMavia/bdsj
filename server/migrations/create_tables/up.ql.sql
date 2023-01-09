@@ -1,18 +1,13 @@
--- Your SQL goes here
-begin;
-
 -- pgcrypto polyfill
-do $$
-begin
-    create function gen_random_uuid()
+begin;
+create function gen_random_uuid()
     returns uuid
     language sql
     as 'SELECT uuid_in(overlay(overlay(md5(random()::text || '':'' || random()::text) placing ''4'' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring);';
-    
-  exception
-    when duplicate_function then
-    null;
-end; $$
+end;
+
+-- Your SQL goes here
+begin;
 
 create table? country (
     @_name varchar(255)!,
