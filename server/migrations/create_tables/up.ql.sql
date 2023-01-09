@@ -140,4 +140,6 @@ create or replace function start_session(
 
   $$ language plpgsql;
 
+insert into auth(auth_pass) values ('xxx');
+
 commit;
