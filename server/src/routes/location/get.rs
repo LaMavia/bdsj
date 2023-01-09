@@ -9,17 +9,17 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use sqlx::Postgres;
 
-pub struct GetRoute;
+pub struct Route;
 #[derive(Deserialize)]
 struct Body {
     pub ids: Option<Vec<i32>>,
     pub names: Option<Vec<String>>,
     pub cities: Option<Vec<String>>,
-    pub country_ids: Option<Vec<i32>>,
+    pub country_codes: Option<Vec<String>>,
 }
 
 #[async_trait]
-impl ApiRoute for GetRoute {
+impl ApiRoute for Route {
     fn test_route(&self, method: &Method, path: &String) -> bool {
         *method == Method::GET && path == "location/get"
     }
@@ -38,7 +38,7 @@ impl ApiRoute for GetRoute {
 
         let result = FilterBuilder::new("location", "select * from location where ")
             .add("id", filters.ids)
-            .add("country_id", filters.country_ids)
+            .add("country_code", filters.country_codes)
             .add("city", filters.cities)
             .add("name", filters.names)
             .build_query_as::<Postgres, Location>()

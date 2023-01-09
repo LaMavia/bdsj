@@ -7,12 +7,13 @@ use crate::{
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-pub struct PutRoute;
+pub struct Route;
 #[derive(Deserialize)]
 struct Body {
     pub name: String,
-    pub city: String,
-    pub country_code: String,
+    pub year: i32,
+    pub location_id: i32,
+    pub host: String,
 }
 
 #[derive(Serialize)]
@@ -21,9 +22,9 @@ struct Response {
 }
 
 #[async_trait]
-impl ApiRoute for PutRoute {
+impl ApiRoute for Route {
     fn test_route(&self, method: &Method, path: &String) -> bool {
-        *method == Method::PUT && path == "location/put"
+        *method == Method::POST && path == "tournament/post"
     }
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
@@ -34,21 +35,32 @@ impl ApiRoute for PutRoute {
 
         let body: Body = serde_json::from_str(&ctx.body).map_err(|e| {
             format!(
-                "invalid body: {}, expected {{name: string, city: String, country_code: string}}; error: {}",
+                "invalid body: {}, expected {{
+                  name: string,
+                  year: number, 
+                  location_id: number,
+                  host: string
+                }}; error: {}",
                 ctx.body,
                 e.to_string()
             )
         })?;
 
         let result = sqlx::query!(
-          "insert into location(location_name, location_city, location_country_code) values ($1, $2, $3)",
-          body.name,
-          body.city,
-          body.country_code
-      )
-      .execute(&db.connection)
-      .await
-      .map_err(|e| e.to_string())?;
+            "insert into tournament(
+              tournament_name, 
+              tournament_year, 
+              tournament_location_id, 
+              tournament_host
+            ) values ($1, $2, $3, $4)",
+            body.name,
+            body.year,
+            body.location_id,
+            body.host
+        )
+        .execute(&db.connection)
+        .await
+        .map_err(|e| e.to_string())?;
 
         ApiResponse::<_>::ok(
             &ctx.headers,

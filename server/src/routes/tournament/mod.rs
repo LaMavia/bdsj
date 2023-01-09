@@ -1,6 +1,6 @@
 mod delete;
 mod get;
-mod put;
+mod post;
 mod stage;
 
 use crate::router::Mounter;
@@ -14,7 +14,7 @@ impl Mounter for TournamentPack {
         router
             .mount(GetRoute {})
             .mount(DeleteRoute {})
-            .mount(put::PutRoute)
+            .mount(post::Route)
             .mount_pack(stage::Pack {})
     }
 }

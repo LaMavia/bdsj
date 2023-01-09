@@ -16,5 +16,11 @@ export const ChoicePanelRoute = () => (
     <NavLink to="../people">
       <Tile elevation={2}>Zawodnicy</Tile>
     </NavLink>
+    <NavLink to="../countries">
+      <Tile elevation={2}>Kraje</Tile>
+    </NavLink>
+    <NavLink to="../locations">
+      <Tile elevation={2}>Lokalizacje</Tile>
+    </NavLink>
   </Box>
 )

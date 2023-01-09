@@ -22,3 +22,10 @@ export interface CountryInfo {
   country_name: string
   country_code: string
 }
+
+export interface LocationInfo {
+  location_id: number
+  location_name: string
+  location_city: string
+  location_country_code: string
+}

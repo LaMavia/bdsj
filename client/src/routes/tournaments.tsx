@@ -62,7 +62,6 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
   useEffect(() => {
     fetch(`${API_URL}?path=tournament/get`, {
       method: 'GET',
-      credentials: 'include',
     })
       .then(r => r.json())
       .then((res: ApiResponse<TournamentInfo[], string>) => {

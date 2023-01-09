@@ -7,7 +7,7 @@ use crate::{
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-pub struct PutRoute;
+pub struct Route;
 #[derive(Deserialize)]
 struct Body {
     name: String,
@@ -20,9 +20,9 @@ struct Response {
 }
 
 #[async_trait]
-impl ApiRoute for PutRoute {
+impl ApiRoute for Route {
     fn test_route(&self, method: &Method, path: &String) -> bool {
-        *method == Method::PUT && path == "country/put"
+        *method == Method::POST && path == "country/post"
     }
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {

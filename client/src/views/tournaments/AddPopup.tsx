@@ -7,16 +7,25 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  FormControl,
   FormGroup,
+  InputLabel,
   MenuItem,
   Select,
   Snackbar,
   TextField,
 } from '@mui/material'
 import SelectInput from '@mui/material/Select/SelectInput'
-import { MouseEventHandler, useState } from 'react'
-import { CountryInfo, PutApiResponse, TournamentInfo } from '../../api'
+import { MouseEventHandler, useEffect, useState } from 'react'
+import {
+  ApiResponse,
+  CountryInfo,
+  LocationInfo,
+  PutApiResponse,
+  TournamentInfo,
+} from '../../api'
 import { API_URL } from '../../config'
+import { AddCountryPopup } from './AddCountryPopup'
 
 export interface AddPopupParams {
   show: boolean
@@ -35,23 +44,81 @@ export const AddPopup = ({
   const [year, setYear] = useState(new Date().getFullYear())
   const [countryCode, setCountryCode] = useState('')
   const [location, setLocation] = useState(0)
+  const [refetch, setRefetch] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
   const [alertMsg, setAlertMsg] = useState('')
   const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info')
   const [countries, setCountries] = useState<CountryInfo[]>([])
-  const [locations, setLocations] = useState([])
+  const [locations, setLocations] = useState<LocationInfo[]>([])
+
+  const [showCountry, setShowCountry] = useState(false)
+
+  useEffect(() => {
+    setIsLoading(true)
+    Promise.all(
+      ['location/get', 'country/get'].map(path =>
+        fetch(`${API_URL}?path=${path}`, {
+          method: 'GET',
+          credentials: 'include',
+        }),
+      ),
+    )
+      .then(rs => {
+        if (rs[0].status !== 200) {
+          throw new TypeError(
+            rs.map(r => `${r.url} => ${r.statusText}`).join(', '),
+          )
+        }
+
+        return Promise.all(rs.map(r => r.json())) as Promise<[any, any]>
+      })
+      .then(
+        ([loc_r, cou_r]: [
+          ApiResponse<LocationInfo[], string>,
+          ApiResponse<CountryInfo[], string>,
+        ]) => {
+          let err = ''
+
+          if (loc_r.ok) {
+            setLocations(loc_r.data)
+          } else {
+            err += `location/get => ${loc_r.error}`
+          }
+
+          if (cou_r.ok) {
+            setCountries(cou_r.data)
+          } else {
+            err += `country/get => ${cou_r.error}`
+          }
+
+          if (err) {
+            setAlertMsg(err)
+            setAlertSeverity('error')
+            setShowAlert(true)
+          }
+        },
+      )
+      .catch((e: Error) => {
+        setAlertMsg(e.message)
+        setAlertSeverity('error')
+        setShowAlert(true)
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
+  }, [refetch])
 
   const onSubmit: MouseEventHandler = e => {
     e.stopPropagation()
     e.preventDefault()
 
     setIsLoading(true)
-    const uri = `${API_URL}?path=auth`
+    const uri = `${API_URL}?path=tournament/put`
     fetch(uri, {
       body: name,
-      method: 'POST',
+      method: 'PUT',
       credentials: 'include',
     })
       .then(res => res.json())
@@ -89,7 +156,7 @@ export const AddPopup = ({
       <Dialog open={show} onClose={handleClose}>
         <DialogTitle>Dodawanie turnieju</DialogTitle>
         <DialogContent>
-          <FormGroup>
+          <FormControl fullWidth sx={{ minWidth: '500px' }}>
             <TextField
               disabled={isLoading}
               autoFocus
@@ -100,6 +167,7 @@ export const AddPopup = ({
               fullWidth
               variant="standard"
               name="name"
+              value={name}
               onChange={e => {
                 setName(e.target.value)
               }}
@@ -108,27 +176,74 @@ export const AddPopup = ({
               disabled={isLoading}
               autoFocus
               margin="dense"
-              id="password"
+              id="year"
               label="Rok"
               type="number"
               fullWidth
               variant="standard"
               name="year"
+              value={year}
               onChange={e => {
                 setYear(+e.target.value)
               }}
             />
-            <FormGroup sx={{ flexFlow: 'row' }}>
-              <Select name="country" label="kraj" id="country" sx={{ flexGrow: 4 }}>
+            <FormControl fullWidth sx={{ flexFlow: 'row', marginTop: '1rem' }}>
+              <InputLabel id="country-label">Kraj</InputLabel>
+              <Select
+                labelId="country-label"
+                name="country"
+                id="country"
+                sx={{ flexBasis: 4, flexGrow: 4 }}
+                value={countryCode}
+                onChange={e => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setCountryCode((e.target.value as string | undefined) || '')
+                }}>
                 {countries.map(c => (
                   <MenuItem value={c.country_code}>{c.country_name}</MenuItem>
                 ))}
+                <MenuItem value={1}>hello</MenuItem>
               </Select>
-              <Button sx={{ flexGrow: 1 }}>
+              <Button
+                variant="contained"
+                sx={{ marginLeft: '0.5rem', flexBasis: 1, flexGrow: 1 }}
+                onClick={e => {
+                  e.preventDefault()
+                  e.stopPropagation()
+
+                  setShowCountry(true)
+                }}>
                 Dodaj Kraj
               </Button>
-            </FormGroup>
-          </FormGroup>
+            </FormControl>
+            <FormControl fullWidth sx={{ flexFlow: 'row', marginTop: '1rem' }}>
+              <InputLabel id="location-label">Lokalizacja</InputLabel>
+              <Select
+                labelId="location-label"
+                name="location"
+                id="location"
+                sx={{ flexBasis: 4, flexGrow: 4 }}
+                value={location}
+                onChange={e => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setLocation(+e.target.value)
+                }}>
+                {locations.map(l => (
+                  <MenuItem value={l.location_id}>
+                    {l.location_name}({l.location_city})
+                  </MenuItem>
+                ))}
+                <MenuItem value={1}>hello</MenuItem>
+              </Select>
+              <Button
+                variant="contained"
+                sx={{ marginLeft: '0.5rem', flexBasis: 1, flexGrow: 1 }}>
+                Dodaj Lokalizację
+              </Button>
+            </FormControl>
+          </FormControl>
           <div></div>
         </DialogContent>
         <DialogActions>
@@ -148,6 +263,14 @@ export const AddPopup = ({
           {alertMsg}
         </Alert>
       </Snackbar>
+      <AddCountryPopup
+        show={showCountry}
+        handleClose={() => setShowCountry(false)}
+        onError={() => {}}
+        onSuccess={() => {
+          setRefetch(!refetch)
+        }}
+      />
     </>
   )
 }
