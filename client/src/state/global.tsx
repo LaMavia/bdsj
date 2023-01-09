@@ -39,7 +39,7 @@ export const getGlobalContext = () => {
 export const isAuth = () => {
   const session_tuple = document.cookie
     .split(';')
-    .map(def => def.split('=') as [string, string])
+    .map(def => def.split('=').map(s => s.trim()) as [string, string])
     .filter(([key, _]) => key == 'session_key')
 
   return session_tuple && !!session_tuple[0]
