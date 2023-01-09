@@ -23,7 +23,7 @@ create table? tournament (
     @_name varchar(255)!,
     @_year integer!,
     &ref location_id integer!,
-    @_stage integer!,
+    @_stage integer! default 0,
     @_host char(2)! -> country_code,
     @_round_qualifier_id integer -> round_id,
     @_round_first_id integer -> round_id,
