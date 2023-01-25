@@ -37,7 +37,7 @@ import {
   TournamentInfo,
 } from '../api'
 import { API_URL } from '../config'
-import { getGlobalContext, isAuth } from '../state/global'
+import { getGlobalContext, get_session_tuple, isAuth } from '../state/global'
 import { AddPopup } from '../views/tournaments/AddPopup'
 import { DeletePopup } from '../views/tournaments/DeletePopup'
 
@@ -98,7 +98,7 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
                   fontSize={'32px'}
                   lineHeight={1.5}
                   component="span">
-                  Turnieje
+                  Turnieje ({get_session_tuple().map(x => x.join('='))})
                 </Typography>
                 {auth && (
                   <Button
