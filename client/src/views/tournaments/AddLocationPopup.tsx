@@ -28,18 +28,20 @@ import { API_URL } from '../../config'
 
 export interface SmallAddParams {
   show: boolean
+  country_code: string,
   handleClose: () => void
   onSuccess: () => void
   onError: () => void
 }
 
-export const AddCountryPopup = ({
+export const AddLocationPopup = ({
   show,
+  country_code,
   handleClose,
   onSuccess,
   onError,
 }: SmallAddParams) => {
-  const [code, setCode] = useState('')
+  const [city, setCity] = useState('')
   const [name, setName] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
@@ -52,12 +54,13 @@ export const AddCountryPopup = ({
     e.preventDefault()
 
     setIsLoading(true)
-    const uri = `${API_URL}?path=country/post`
+    const uri = `${API_URL}?path=location/post`
     fetch(uri, {
       body: JSON.stringify(
         {
           name,
-          code,
+          city,
+          country_code
         },
         null,
         0,
@@ -69,10 +72,10 @@ export const AddCountryPopup = ({
       .then((res: PutApiResponse) => {
         if (res.ok) {
           setAlertSeverity('success')
-          setAlertMsg('poprawnie dodano kraj')
+          setAlertMsg('poprawnie dodano lokalizację')
 
           // reset the form
-          setCode('')
+          setCity('')
           setName('')
 
           handleClose()
@@ -125,15 +128,15 @@ export const AddCountryPopup = ({
               disabled={isLoading}
               autoFocus
               margin="dense"
-              id="code"
-              label="kod"
+              id="city"
+              label="miasto"
               type="text"
               fullWidth
               variant="standard"
-              name="code"
-              value={code}
+              name="city"
+              value={city}
               onChange={e => {
-                setCode(e.target.value)
+                setCity(e.target.value)
               }}
             />
           </FormControl>

@@ -21,7 +21,7 @@ struct Body {
 #[async_trait]
 impl ApiRoute for Route {
     fn test_route(&self, method: &Method, path: &String) -> bool {
-        *method == Method::GET && path == "location/get"
+        *method == Method::POST && path == "location/get"
     }
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {

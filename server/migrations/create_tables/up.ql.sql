@@ -21,17 +21,17 @@ create table? round (
 
 create table? location (
     &id,
-    @_name varchar(255)!,
-    @_city varchar(255)!,
+    @_name varchar(255)! check (length(@_name) > 0),
+    @_city varchar(255)! check (length(@_city) > 0),
     &ref country_code char(2)!
 );
 
 create table? tournament (
     &id,
-    @_name varchar(255)!,
+    @_name varchar(255)! check (length(@_name) > 0),
     @_year integer!,
     &ref location_id integer!,
-    @_stage integer! default 0,
+    @_stage integer default 0!,
     @_host char(2)! -> country_code,
     @_round_qualifier_id integer -> round_id,
     @_round_first_id integer -> round_id,
@@ -47,9 +47,9 @@ create table? lim (
 
 create table? person (
     &id,
-    @_firstname varchar(255)!,
-    @_lastname varchar(255)!,
-    @_gender varchar(2)!,
+    @_firstname varchar(255)! check (length(@_firstname) > 0),
+    @_lastname varchar(255)! check (length(@_lastname) > 0),
+    @_gender varchar(2)! check (@_gender in ('m', 'f', 'nb', 'na')),
     @_nationality char(2)! -> country_code
 );
 

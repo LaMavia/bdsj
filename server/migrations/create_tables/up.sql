@@ -21,19 +21,19 @@ create table if not exists round (
 
 create table if not exists location (
     location_id serial primary key,
-    location_name varchar(255) not null,
-    location_city varchar(255) not null,
+    location_name varchar(255) not null check (length(location_name) > 0),
+    location_city varchar(255) not null check (length(location_city) > 0),
     location_country_code char(2) not null 
         references country (country_code)
 );
 
 create table if not exists tournament (
     tournament_id serial primary key,
-    tournament_name varchar(255) not null,
+    tournament_name varchar(255) not null check (length(tournament_name) > 0),
     tournament_year integer not null,
     tournament_location_id integer not null 
         references location (location_id),
-    tournament_stage integer not null default 0,
+    tournament_stage integer default 0 not null,
     tournament_host char(2) not null 
         references country (country_code),
     tournament_round_qualifier_id integer 
@@ -55,9 +55,9 @@ create table if not exists lim (
 
 create table if not exists person (
     person_id serial primary key,
-    person_firstname varchar(255) not null,
-    person_lastname varchar(255) not null,
-    person_gender varchar(2) not null,
+    person_firstname varchar(255) not null check (length(person_firstname) > 0),
+    person_lastname varchar(255) not null check (length(person_lastname) > 0),
+    person_gender varchar(2) not null check (person_gender in ('m', 'f', 'nb', 'na')),
     person_nationality char(2) not null 
         references country (country_code)
 );
@@ -158,5 +158,7 @@ create or replace function start_session(
   end;
 
   $$ language plpgsql;
+
+insert into auth(auth_pass) values (md5('xxx'));
 
 commit;

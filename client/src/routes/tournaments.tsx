@@ -98,7 +98,7 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
                   fontSize={'32px'}
                   lineHeight={1.5}
                   component="span">
-                  Turnieje ({get_session_tuple().map(x => x.join('='))})
+                  Turnieje
                 </Typography>
                 {auth && (
                   <Button
@@ -130,8 +130,8 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
                   {tournaments.map(t => (
                     <ListItem>
                       <ListItemText
-                        primary={`${t.tournament_name} (${t.tournament_year}, ${t.tournament_location_city})`}
-                        secondary="Secondary text"
+                        primary={`${t.tournament_name} (${t.tournament_year})`}
+                        secondary={`${t.tournament_location_name}, ${t.tournament_location_city}, ${t.tournament_host}`}
                       />
                       <ButtonGroup variant="contained">
                         <Button color="primary">info</Button>

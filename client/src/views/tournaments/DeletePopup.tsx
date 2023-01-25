@@ -1,7 +1,17 @@
-import { Alert, AlertColor, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar } from "@mui/material"
-import { MouseEventHandler, useState } from "react"
-import { DeleteApiResponse, TournamentInfo } from "../../api"
-import { API_URL } from "../../config"
+import {
+  Alert,
+  AlertColor,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Snackbar,
+} from '@mui/material'
+import { MouseEventHandler, useState } from 'react'
+import { DeleteApiResponse, TournamentInfo } from '../../api'
+import { API_URL } from '../../config'
 
 export interface DeletePopupParams {
   show: boolean
@@ -32,9 +42,8 @@ export const DeletePopup = ({
     e.preventDefault()
 
     setIsLoading(true)
-    const uri = `${API_URL}?path=tournament/delete`
-    fetch(uri, {
-      method: 'DELETE',
+    fetch(`${API_URL}?path=tournament/delete`, {
+      method: 'POST',
       credentials: 'include',
       body: JSON.stringify(
         {
@@ -52,16 +61,13 @@ export const DeletePopup = ({
           handleClose()
           onSuccess()
         } else {
-          setAlertSeverity('error')
-          setAlertMsg(res.error || '')
-          onError()
+          throw new TypeError(res.error || '')
         }
       })
       .catch((e: TypeError) => {
-        debugger
-        console.log(uri)
         setAlertMsg(e.message)
         setAlertSeverity('error')
+        onError()
       })
       .finally(() => {
         setShowAlert(true)
@@ -80,7 +86,7 @@ export const DeletePopup = ({
         <DialogContent>
           <DialogContentText>
             Czy na pewno chcesz usunąć turniej {tournament.tournament_name}{' '}
-            {tournament.tournament_year} ({tournament.tournament_id})?
+            {tournament.tournament_year}?
           </DialogContentText>
         </DialogContent>
         <DialogActions>

@@ -21,7 +21,7 @@ struct Response {
 #[async_trait]
 impl ApiRoute for DeleteRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool {
-        *method == Method::DELETE && path == "tournament/delete"
+        *method == Method::POST && path == "tournament/delete"
     }
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {

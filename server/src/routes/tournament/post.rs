@@ -60,7 +60,21 @@ impl ApiRoute for Route {
         )
         .execute(&db.connection)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            format!(
+                "{}; query: \n{}",
+                e.to_string(),
+                format!(
+                    "insert into tournament(
+                    tournament_name, 
+                    tournament_year, 
+                    tournament_location_id, 
+                    tournament_host
+                  ) values ({}, {}, {}, {})",
+                    body.name, body.year, body.location_id, body.host
+                )
+            )
+        })?;
 
         ApiResponse::<_>::ok(
             &ctx.headers,
