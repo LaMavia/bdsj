@@ -17,6 +17,7 @@ import { Navigate } from 'react-router'
 import { ApiResponse, AuthApiResponse } from '../api'
 import { Tile } from '../components/Tile'
 import { API_URL } from '../config'
+import { isAuth } from '../state/global'
 
 interface AuthPopupParams {
   show: boolean
@@ -107,7 +108,7 @@ const AuthPopup = ({ show, handleClose, redirectTo }: AuthPopupParams) => {
           {alertMsg}
         </Alert>
       </Snackbar>
-      {redirect && <Navigate to={redirectTo} />}
+      {((show && isAuth()) || redirect) && <Navigate to={redirectTo} />}
     </>
   )
 }

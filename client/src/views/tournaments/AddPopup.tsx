@@ -178,7 +178,8 @@ export const AddPopup = ({
           setAlertMsg('poprawnie dodano turniej')
           handleClose()
           onSuccess()
-          // clean the form
+
+          // reset the form
           setName('')
           setYear(new Date().getFullYear())
           setCountryCode('')
@@ -222,6 +223,7 @@ export const AddPopup = ({
               fullWidth
               variant="standard"
               name="name"
+              required
               value={name}
               onChange={e => {
                 setName(e.target.value)
@@ -229,7 +231,6 @@ export const AddPopup = ({
             />
             <TextField
               disabled={isLoading}
-              autoFocus
               margin="dense"
               id="year"
               label="Rok"
@@ -251,8 +252,6 @@ export const AddPopup = ({
                 sx={{ flexBasis: 4, flexGrow: 4 }}
                 value={countryCode}
                 onChange={e => {
-                  e.preventDefault()
-                  e.stopPropagation()
                   setCountryCode((e.target.value as string | undefined) || '')
                 }}>
                 {countries.map(c => (
@@ -265,9 +264,6 @@ export const AddPopup = ({
                 variant="contained"
                 sx={{ marginLeft: '0.5rem', flexBasis: 1, flexGrow: 1 }}
                 onClick={e => {
-                  e.preventDefault()
-                  e.stopPropagation()
-
                   setShowCountry(true)
                 }}>
                 Dodaj Kraj
@@ -283,13 +279,11 @@ export const AddPopup = ({
                 value={location}
                 disabled={!countryCode}
                 onChange={e => {
-                  e.preventDefault()
-                  e.stopPropagation()
                   setLocation(+e.target.value)
                 }}>
                 {locations.map(l => (
                   <MenuItem key={l.location_id} value={l.location_id}>
-                    {l.location_name}({l.location_city})
+                    {l.location_name} ({l.location_city})
                   </MenuItem>
                 ))}
               </Select>
@@ -297,10 +291,7 @@ export const AddPopup = ({
                 disabled={!countryCode}
                 variant="contained"
                 sx={{ marginLeft: '0.5rem', flexBasis: 1, flexGrow: 1 }}
-                onClick={e => {
-                  e.preventDefault()
-                  e.stopPropagation()
-
+                onClick={_ => {
                   setShowLocation(true)
                 }}>
                 Dodaj Lokalizację

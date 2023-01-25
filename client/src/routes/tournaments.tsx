@@ -30,12 +30,14 @@ import React, {
   useEffect,
   useState,
 } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ApiResponse,
   DeleteApiResponse,
   PutApiResponse,
   TournamentInfo,
 } from '../api'
+import { Loader } from '../components/Loader'
 import { API_URL } from '../config'
 import { getGlobalContext, get_session_tuple, isAuth } from '../state/global'
 import { AddPopup } from '../views/tournaments/AddPopup'
@@ -54,6 +56,8 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
   const [showAdd, setShowAdd] = useState(false)
   const [refetch, setRefetch] = useState(false)
 
+  const navigate = useNavigate()
+
   const closeAlert = () => {
     setShowAlert(false)
   }
@@ -61,7 +65,7 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
   // onMount
   useEffect(() => {
     fetch(`${API_URL}?path=tournament/get`, {
-      method: 'GET',
+      method: 'POST',
     })
       .then(r => r.json())
       .then((res: ApiResponse<TournamentInfo[], string>) => {
@@ -115,16 +119,7 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
             </Paper>
             <Paper elevation={5}>
               {loading ? (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    width: '100%',
-                    height: '500px',
-                    justifyContent: 'space-around',
-                    flexFlow: 'column',
-                  }}>
-                  <CircularProgress sx={{ margin: 'auto' }} />
-                </Box>
+                <Loader loading={loading} />
               ) : tournaments.length ? (
                 <List sx={{ maxHeight: '70vh', overflowY: 'scroll' }}>
                   {tournaments.map(t => (
@@ -134,17 +129,35 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
                         secondary={`${t.tournament_location_name}, ${t.tournament_location_city}, ${t.tournament_host}`}
                       />
                       <ButtonGroup variant="contained">
-                        <Button color="primary">info</Button>
                         <Button
-                          onClick={e => {
-                            e.stopPropagation()
-                            e.preventDefault()
-                            setTournament(t)
-                            setShowDelete(true)
-                          }}
-                          color="error">
-                          usuń
+                          color="primary"
+                          onClick={_ => {
+                            navigate(`/tournament/${t.tournament_id}`)
+                          }}>
+                          <Link
+                            style={{
+                              display: 'block',
+                              textDecoration: 'none',
+                              color: 'inherit',
+                              width: '100%',
+                              height: '100%',
+                            }}
+                            to={`/tournament/${t.tournament_id}`}>
+                            info
+                          </Link>
                         </Button>
+                        {auth && (
+                          <Button
+                            onClick={e => {
+                              e.stopPropagation()
+                              e.preventDefault()
+                              setTournament(t)
+                              setShowDelete(true)
+                            }}
+                            color="error">
+                            usuń
+                          </Button>
+                        )}
                       </ButtonGroup>
                     </ListItem>
                   ))}

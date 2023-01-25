@@ -16,6 +16,7 @@ struct Body {
     locations: Option<Vec<i32>>,
     stages: Option<Vec<i32>>,
     hosts: Option<Vec<String>>,
+    ids: Option<Vec<i32>>,
 }
 
 #[derive(Serialize, FromRow)]
@@ -32,7 +33,7 @@ struct TournamentInfo {
 #[async_trait]
 impl ApiRoute for GetRoute {
     fn test_route(&self, method: &Method, path: &String) -> bool {
-        *method == Method::GET && path == "tournament/get"
+        *method == Method::POST && path == "tournament/get"
     }
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
@@ -67,6 +68,7 @@ impl ApiRoute for GetRoute {
         .add("host", filters.hosts)
         .add("location_id", filters.locations)
         .add("stage", filters.stages)
+        .add("id", filters.ids)
         .build_query_as::<Postgres, TournamentInfo>()
         .fetch_all(&db.connection)
         .await
