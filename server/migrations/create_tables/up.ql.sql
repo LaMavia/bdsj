@@ -39,7 +39,7 @@ create table? tournament (
 );
 
 create table? lim (
-    @_amount integer! default 2,
+    @_amount integer default 2! check (@_amount > 0),
     &ref country_code char(2)!,
     &ref tournament_id integer!,
     &pk (@_country_code, @_tournament_id)
@@ -96,7 +96,7 @@ create table? sess (
 
 
 -- functions --
-
+-- session
 create or replace function authenticate(in session_id text, in duration interval) 
   returns void as $$
   declare 
@@ -140,6 +140,40 @@ create or replace function start_session(
 
   $$ language plpgsql;
 
+-- triggers
+create or replace function participant_insert_check() 
+returns trigger as $$
+  declare 
+    available_tickets integer;
+    used_tickets      integer;
+  begin
+    select count(*) into used_tickets
+    from participant
+    where participant_country_code  = NEW.lim_country_code 
+      and participant_tournament_id = NEW.lim_tournament_id
+    ;
+
+    select amount into available_tickets
+    from lim
+    where lim_country_code  = NEW.lim_country_code
+      and lim_tournament_id = NEW.lim_tournament_id
+    ;
+
+    if used_tickets >= available_tickets then
+      raise exception 'Przekroczono kwotę startową';
+    end if;
+
+    return NEW;
+  end;
+$$ language plpgsql;
+
+create trigger participant_insert_check_trigger 
+  before insert 
+  on participant
+  for each row
+  execute procedure participant_insert_check();
+
+-- values
 insert into auth(auth_pass) values (md5('xxx'));
 
 commit;

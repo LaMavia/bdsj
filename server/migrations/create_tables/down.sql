@@ -14,4 +14,8 @@ drop table if exists disqualification cascade;
 drop table if exists auth cascade;
 drop table if exists sess cascade;
 
+drop trigger if exists participant_insert_check_trigger 
+  on participant 
+  cascade;
+
 commit;

@@ -40,6 +40,7 @@ import {
 import { Loader } from '../components/Loader'
 import { API_URL } from '../config'
 import { getGlobalContext, get_session_tuple, isAuth } from '../state/global'
+import { useAlert } from '../state/hooks'
 import { AddPopup } from '../views/tournaments/AddPopup'
 import { DeletePopup } from '../views/tournaments/DeletePopup'
 
@@ -48,8 +49,7 @@ export interface TournamentsRouteProps {}
 export const TournamentsRoute = ({}: TournamentsRouteProps) => {
   const auth = isAuth()
   const [loading, setLoading] = useState(true)
-  const [showAlert, setShowAlert] = useState(false)
-  const [alertMsg, setAlertMsg] = useState('')
+  const alert = useAlert()
   const [tournaments, setTournaments] = useState<TournamentInfo[]>([])
   const [tournament, setTournament] = useState<TournamentInfo | null>(null)
   const [showDelete, setShowDelete] = useState(false)
@@ -57,10 +57,6 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
   const [refetch, setRefetch] = useState(false)
 
   const navigate = useNavigate()
-
-  const closeAlert = () => {
-    setShowAlert(false)
-  }
 
   // onMount
   useEffect(() => {
@@ -70,13 +66,14 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
       .then(r => r.json())
       .then((res: ApiResponse<TournamentInfo[], string>) => {
         if (!res.ok) {
-          setAlertMsg(res.error)
-          setShowAlert(true)
+          alert.display(res.error, 'error')
         } else {
-          closeAlert()
           setTournaments(res.data)
         }
         setLoading(false)
+      })
+      .catch((e: Error) => {
+        alert.display(e.message, 'error')
       })
   }, [refetch])
 
@@ -126,7 +123,7 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
                     <ListItem>
                       <ListItemText
                         primary={`${t.tournament_name} (${t.tournament_year})`}
-                        secondary={`${t.tournament_location_name}, ${t.tournament_location_city}, ${t.tournament_host}`}
+                        secondary={`${t.tournament_location_name}, ${t.tournament_location_city}, ${t.tournament_host_code}`}
                       />
                       <ButtonGroup variant="contained">
                         <Button
@@ -149,8 +146,6 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
                         {auth && (
                           <Button
                             onClick={e => {
-                              e.stopPropagation()
-                              e.preventDefault()
                               setTournament(t)
                               setShowDelete(true)
                             }}
@@ -176,6 +171,7 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
           </Container>
         </Grid>
       </Box>
+      <alert.AlertComponent />
       <DeletePopup
         handleClose={() => setShowDelete(false)}
         show={showDelete}

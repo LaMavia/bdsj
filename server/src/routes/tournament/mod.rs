@@ -1,3 +1,4 @@
+mod country_info;
 mod delete;
 mod get;
 mod post;
@@ -5,6 +6,7 @@ mod stage;
 
 use crate::router::Mounter;
 
+use self::country_info::CountriesGet;
 use self::delete::DeleteRoute;
 use self::get::GetRoute;
 
@@ -15,6 +17,7 @@ impl Mounter for TournamentPack {
             .mount(GetRoute {})
             .mount(DeleteRoute {})
             .mount(post::Route)
+            .mount(CountriesGet {})
             .mount_pack(stage::Pack {})
     }
 }

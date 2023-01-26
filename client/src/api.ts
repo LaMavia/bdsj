@@ -1,4 +1,4 @@
-export interface ApiResponse<T, E> {
+export interface ApiResponse<T, E = string> {
   data: T
   error: E
   ok: boolean
@@ -14,8 +14,13 @@ export interface TournamentInfo {
   tournament_year: number
   tournament_location_city: string
   tournament_location_name: string
+  tournament_location_id: number
   tournament_stage: number
-  tournament_host: string
+  tournament_host_code: string
+  tournament_host_name: string
+  tournament_participant_count: number
+  tournament_country_count: number
+  tournament_total_tickets: number
 }
 
 export interface CountryInfo {
@@ -28,4 +33,10 @@ export interface LocationInfo {
   location_name: string
   location_city: string
   location_country_code: string
+}
+
+export interface PersonShortInfo {
+  person_firstname: string,
+  person_lastname: string,
+  person_id: number
 }

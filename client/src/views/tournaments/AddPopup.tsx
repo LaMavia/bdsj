@@ -308,15 +308,15 @@ export const AddPopup = ({
             Potwierdź
           </Button>
         </DialogActions>
+        <Snackbar open={showAlert} autoHideDuration={6000} onClose={closeAlert}>
+          <Alert
+            onClose={closeAlert}
+            severity={alertSeverity}
+            sx={{ width: '100%' }}>
+            {alertMsg}
+          </Alert>
+        </Snackbar>
       </Dialog>
-      <Snackbar open={showAlert} autoHideDuration={6000} onClose={closeAlert}>
-        <Alert
-          onClose={closeAlert}
-          severity={alertSeverity}
-          sx={{ width: '100%' }}>
-          {alertMsg}
-        </Alert>
-      </Snackbar>
       <AddCountryPopup
         show={showCountry}
         handleClose={() => setShowCountry(false)}
