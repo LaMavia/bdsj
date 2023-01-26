@@ -39,7 +39,7 @@ export const AddParticipant = ({
 }: AddParticipantProps) => {
   const auth = isAuth()
 
-  const [loading, pLoading, vLoading] = useCounter(0)
+  const [loading, setLoading] = useState(false)
   const [refetch, setRefetch] = useState(false)
 
   const [countryCode, setCountryCode] = useState(country_code)
@@ -58,7 +58,7 @@ export const AddParticipant = ({
 
   // get tournaments
   useEffect(() => {
-    vLoading()
+    setLoading(true)
     fetch(`${API_URL}?path=tournament/get`, {
       method: 'POST',
       credentials: 'include',
@@ -78,12 +78,12 @@ export const AddParticipant = ({
         setTournaments(r.data)
       })
       .catch((e: TypeError) => alert.display(e.message, 'error'))
-      .finally(() => pLoading())
+      .finally(() => setLoading(false))
   }, [refetch])
 
   // get countries
   useEffect(() => {
-    vLoading()
+    setLoading(true)
     fetch(`${API_URL}?path=country/get`, {
       method: 'POST',
       credentials: 'include',
@@ -103,15 +103,18 @@ export const AddParticipant = ({
         setCountries(r.data)
       })
       .catch((e: TypeError) => alert.display(e.message, 'error'))
-      .finally(() => pLoading())
-  }, [refetch])
+      .finally(() => setLoading(false))
+  }, [refetch, tournamentId])
 
   // get persons
   useEffect(() => {
-    vLoading()
+    setLoading(true)
     fetch(`${API_URL}?path=person/get/short`, {
       method: 'POST',
       credentials: 'include',
+      body: JSON.stringify({
+        nationalities: [countryCode]
+      }, null, 0)
     })
       .then(r => {
         if (!r.ok || r.status !== 200) {
@@ -128,10 +131,13 @@ export const AddParticipant = ({
         setPersons(r.data)
       })
       .catch((e: TypeError) => alert.display(e.message, 'error'))
-      .finally(() => pLoading())
-  }, [refetch])
+      .finally(() => setLoading(false))
+  }, [refetch, countryCode])
 
-  const onSubmit = () => {}
+  const onSubmit = () => {
+    // setLoading(true)
+    // fetch(`${API_URL}?path=`)
+  }
 
   return (
     <>
@@ -221,10 +227,10 @@ export const AddParticipant = ({
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button disabled={loading > 0} onClick={handleClose}>
+          <Button disabled={loading} onClick={handleClose}>
             Anuluj
           </Button>
-          <Button type="submit" disabled={loading > 0} onClick={onSubmit}>
+          <Button type="submit" disabled={loading} onClick={onSubmit}>
             Potwierdź
           </Button>
         </DialogActions>
