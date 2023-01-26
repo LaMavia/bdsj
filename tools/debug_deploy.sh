@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-server_path=/srv/http/\~ts438730/bdsj
+server_path=${1:-/srv/http/\~ts438730/bdsj}
 
 cargo build -p server --release || exit 1
 # cd ./client && make build && cd ..

@@ -33,3 +33,12 @@ export const useAlert = (): AlertState => {
     AlertComponent,
   }
 }
+
+export const useCounter = (v: number) => {
+  const [val, setVal] = useState(v)
+  return [val, () => setVal(val - 1), () => setVal(val + 1)] as [
+    number,
+    () => void,
+    () => void,
+  ]
+}

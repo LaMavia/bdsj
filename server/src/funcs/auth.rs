@@ -1,4 +1,5 @@
 use crate::{api_response::ApiResponse, database::Database, router::RouteContext};
+use http::{header::SET_COOKIE, HeaderMap, HeaderValue};
 use sqlx::Row;
 
 pub(crate) async fn auth_session<T: ToString>(
@@ -17,14 +18,23 @@ pub(crate) async fn auth_session<T: ToString>(
 
 pub(crate) async fn auth_session_from_cookies(
     db: &Database,
-    ctx: &RouteContext
+    ctx: &RouteContext,
 ) -> Result<(), Result<cgi::Response, String>> {
     let duration = &"1 day".to_string();
     match ctx.cookies.get("session_key") {
         Some(session_key) => match auth_session(&db, session_key, duration).await {
             Ok(()) => Ok(()),
             Err(e) => {
-                Err(ApiResponse::<String, String>::error(&ctx.headers, e).send(403, None))
+                let mut res_headers = HeaderMap::new();
+                res_headers.insert(
+                    SET_COOKIE,
+                    HeaderValue::from_str(
+                        "session_key=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/",
+                    )
+                    .unwrap(),
+                );
+                Err(ApiResponse::<String, String>::error(&ctx.headers, e)
+                    .send(403, Some(res_headers)))
             }
         },
         None => Err(ApiResponse::<String, String>::error(

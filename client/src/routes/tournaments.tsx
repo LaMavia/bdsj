@@ -145,7 +145,7 @@ export const TournamentsRoute = ({}: TournamentsRouteProps) => {
                         </Button>
                         {auth && (
                           <Button
-                            onClick={e => {
+                            onClick={_ => {
                               setTournament(t)
                               setShowDelete(true)
                             }}

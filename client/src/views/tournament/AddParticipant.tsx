@@ -1,4 +1,14 @@
-import { Dialog, DialogContent, DialogTitle } from '@mui/material'
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+} from '@mui/material'
 import { useEffect, useState } from 'react'
 import {
   ApiResponse,
@@ -9,7 +19,9 @@ import {
 import { PopupProps } from '../../components/PopupInterface'
 import { API_URL } from '../../config'
 import { isAuth } from '../../state/global'
-import { useAlert } from '../../state/hooks'
+import { useAlert, useCounter } from '../../state/hooks'
+import { AddCountryPopup } from '../tournaments/AddCountryPopup'
+import { AddPopup as AddTournamentPopup } from '../tournaments/AddPopup'
 
 export interface AddParticipantProps extends PopupProps {
   country_code: string
@@ -26,14 +38,16 @@ export const AddParticipant = ({
 }: AddParticipantProps) => {
   const auth = isAuth()
 
-  const [loading, setLoading] = useState(0)
+  const [loading, pLoading, vLoading] = useCounter(0)
   const [refetch, setRefetch] = useState(false)
 
   const [countryCode, setCountryCode] = useState(country_code)
   const [countries, setCountries] = useState<CountryInfo[]>([])
+  const [showCountry, setShowCountry] = useState(false)
 
   const [tournamentId, setTournamentId] = useState(tournament_id)
   const [tournaments, setTournaments] = useState<TournamentInfo[]>([])
+  const [showAddTournament, setShowAddTournament] = useState(false)
 
   const [persons, setPersons] = useState<PersonShortInfo[]>([])
   const [personId, setPersonId] = useState(0)
@@ -42,14 +56,14 @@ export const AddParticipant = ({
 
   // get tournaments
   useEffect(() => {
-    setLoading(loading + 1)
-    fetch(`${API_URL}?path=tournaments/get`, {
+    vLoading()
+    fetch(`${API_URL}?path=tournament/get`, {
       method: 'POST',
       credentials: 'include',
     })
       .then(r => {
         if (!r.ok || r.status !== 200) {
-          throw new TypeError(`tournaments/get => ${r.statusText}`)
+          throw new TypeError(`tournament/get => ${r.statusText}`)
         }
 
         return r.json() as Promise<ApiResponse<TournamentInfo[]>>
@@ -61,16 +75,122 @@ export const AddParticipant = ({
 
         setTournaments(r.data)
       })
-      .catch((e: TypeError) => {})
-    alert.display('Hello', 'info')
+      .catch((e: TypeError) => alert.display(e.message, 'error'))
+      .finally(() => pLoading())
   }, [refetch])
+
+  // get countries
+  useEffect(() => {
+    vLoading()
+    fetch(`${API_URL}?path=country/get`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(r => {
+        if (!r.ok || r.status !== 200) {
+          throw new TypeError(`country/get => ${r.statusText}`)
+        }
+
+        return r.json() as Promise<ApiResponse<CountryInfo[]>>
+      })
+      .then(r => {
+        if (!r.ok) {
+          throw new TypeError(r.error)
+        }
+
+        setCountries(r.data)
+      })
+      .catch((e: TypeError) => alert.display(e.message, 'error'))
+      .finally(() => pLoading())
+  }, [refetch])
+
+  const onSubmit = () => {}
 
   return (
     <>
       <Dialog open={show} onClose={handleClose}>
-        <DialogTitle>Dodaj zgłoszenie</DialogTitle>
-        <DialogContent>Hello!</DialogContent>
+        <DialogTitle>Dodaj zgłoszenie {loading}</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ minWidth: '500px' }}>
+            <FormControl fullWidth sx={{ flexFlow: 'row', marginTop: '1rem' }}>
+              <InputLabel id="tournament-label">Turniej</InputLabel>
+              <Select
+                labelId="tournament-label"
+                name="tournament"
+                id="tournament"
+                sx={{ flexBasis: 4, flexGrow: 4 }}
+                value={tournamentId}
+                onChange={e => {
+                  setTournamentId(+e.target.value || tournament_id)
+                }}>
+                {tournaments.map(t => (
+                  <MenuItem key={t.tournament_id} value={t.tournament_id}>
+                    {t.tournament_name} ({t.tournament_year})
+                  </MenuItem>
+                ))}
+              </Select>
+              <Button
+                variant="contained"
+                sx={{ marginLeft: '0.5rem', flexBasis: 1, flexGrow: 1 }}
+                onClick={_ => {
+                  setShowAddTournament(true)
+                }}>
+                Dodaj Turniej
+              </Button>
+            </FormControl>
+            <FormControl fullWidth sx={{ flexFlow: 'row', marginTop: '1rem' }}>
+              <InputLabel id="country-label">Kraj</InputLabel>
+              <Select
+                labelId="country-label"
+                name="country"
+                id="country"
+                sx={{ flexBasis: 4, flexGrow: 4 }}
+                value={countryCode}
+                onChange={e => {
+                  setCountryCode((e.target.value as string | undefined) || '')
+                }}>
+                {countries.map(c => (
+                  <MenuItem key={c.country_code} value={c.country_code}>
+                    {c.country_name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <Button
+                variant="contained"
+                sx={{ marginLeft: '0.5rem', flexBasis: 1, flexGrow: 1 }}
+                onClick={_ => {
+                  setShowCountry(true)
+                }}>
+                Dodaj Kraj
+              </Button>
+            </FormControl>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={loading > 0} onClick={handleClose}>
+            Anuluj
+          </Button>
+          <Button type="submit" disabled={loading > 0} onClick={onSubmit}>
+            Potwierdź
+          </Button>
+        </DialogActions>
         <alert.AlertComponent />
+        <AddCountryPopup
+          show={showCountry}
+          handleClose={() => setShowCountry(false)}
+          onError={() => {}}
+          onSuccess={() => {
+            setRefetch(!refetch)
+          }}
+        />
+        <AddTournamentPopup
+          handleClose={() => setShowAddTournament(false)}
+          show={showAddTournament}
+          onError={() => {}}
+          onSuccess={() => {
+            setRefetch(!refetch)
+          }}
+        />
       </Dialog>
     </>
   )
