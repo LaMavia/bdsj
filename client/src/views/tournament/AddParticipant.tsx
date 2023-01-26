@@ -22,6 +22,7 @@ import { isAuth } from '../../state/global'
 import { useAlert, useCounter } from '../../state/hooks'
 import { AddCountryPopup } from '../tournaments/AddCountryPopup'
 import { AddPopup as AddTournamentPopup } from '../tournaments/AddPopup'
+import { AddPerson } from './AddPerson'
 
 export interface AddParticipantProps extends PopupProps {
   country_code: string
@@ -51,6 +52,7 @@ export const AddParticipant = ({
 
   const [persons, setPersons] = useState<PersonShortInfo[]>([])
   const [personId, setPersonId] = useState(0)
+  const [showAddPerson, setShowAddPerson] = useState(false)
 
   const alert = useAlert()
 
@@ -99,6 +101,31 @@ export const AddParticipant = ({
         }
 
         setCountries(r.data)
+      })
+      .catch((e: TypeError) => alert.display(e.message, 'error'))
+      .finally(() => pLoading())
+  }, [refetch])
+
+  // get persons
+  useEffect(() => {
+    vLoading()
+    fetch(`${API_URL}?path=person/get/short`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(r => {
+        if (!r.ok || r.status !== 200) {
+          throw new TypeError(`${r.url} => ${r.statusText}`)
+        }
+
+        return r.json() as Promise<ApiResponse<PersonShortInfo[]>>
+      })
+      .then(r => {
+        if (!r.ok) {
+          throw new TypeError(r.error)
+        }
+
+        setPersons(r.data)
       })
       .catch((e: TypeError) => alert.display(e.message, 'error'))
       .finally(() => pLoading())
@@ -164,6 +191,33 @@ export const AddParticipant = ({
                 Dodaj Kraj
               </Button>
             </FormControl>
+            <FormControl fullWidth sx={{ flexFlow: 'row', marginTop: '1rem' }}>
+              <InputLabel id="person-label">Uczestnik</InputLabel>
+              <Select
+                labelId="person-label"
+                name="person"
+                id="person"
+                sx={{ flexBasis: 4, flexGrow: 4 }}
+                value={personId}
+                onChange={e => {
+                  setPersonId(+e.target.value || 0)
+                }}>
+                {persons.map(p => (
+                  <MenuItem key={p.person_id} value={p.person_id}>
+                    {p.person_first_name} {p.person_last_name} (
+                    {p.person_gender})
+                  </MenuItem>
+                ))}
+              </Select>
+              <Button
+                variant="contained"
+                sx={{ marginLeft: '0.5rem', flexBasis: 1, flexGrow: 1 }}
+                onClick={_ => {
+                  setShowAddPerson(true)
+                }}>
+                Dodaj Uczestnika
+              </Button>
+            </FormControl>
           </FormControl>
         </DialogContent>
         <DialogActions>
@@ -186,6 +240,14 @@ export const AddParticipant = ({
         <AddTournamentPopup
           handleClose={() => setShowAddTournament(false)}
           show={showAddTournament}
+          onError={() => {}}
+          onSuccess={() => {
+            setRefetch(!refetch)
+          }}
+        />
+        <AddPerson
+          handleClose={() => setShowAddPerson(false)}
+          show={showAddPerson}
           onError={() => {}}
           onSuccess={() => {
             setRefetch(!refetch)

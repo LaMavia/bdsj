@@ -36,7 +36,18 @@ export interface LocationInfo {
 }
 
 export interface PersonShortInfo {
-  person_firstname: string,
-  person_lastname: string,
+  person_first_name: string
+  person_last_name: string
+  person_nationality: string
+  person_gender: string
   person_id: number
+}
+
+export interface PersonInfo {
+  person_id: number
+  person_first_name: string
+  person_last_name: string
+  person_gender: string
+  person_nationality_code: string
+  person_nationality_name: string
 }

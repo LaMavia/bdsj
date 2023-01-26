@@ -47,8 +47,8 @@ create table? lim (
 
 create table? person (
     &id,
-    @_firstname varchar(255)! check (length(@_firstname) > 0),
-    @_lastname varchar(255)! check (length(@_lastname) > 0),
+    @_first_name varchar(255)! check (length(@_first_name) > 0),
+    @_last_name varchar(255)! check (length(@_last_name) > 0),
     @_gender varchar(2)! check (@_gender in ('m', 'f', 'nb', 'na', 'gf', 'db', 'dg', 'ag')),
     @_nationality char(2)! -> country_code
 );

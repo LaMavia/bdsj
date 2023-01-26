@@ -2,8 +2,8 @@ use crate::router::Router;
 
 use self::{
     auth::AuthRoute, countries::CountriesRoute, country::CountryPack, end_session::EndSessionRoute,
-    health::HealthRoute, location::LocationPack, not_found::NotFoundRoute,
-    tournament::TournamentPack, lim::LimPack,
+    health::HealthRoute, lim::LimPack, location::LocationPack, not_found::NotFoundRoute,
+    person::PersonPack, tournament::TournamentPack,
 };
 
 mod auth;
@@ -11,10 +11,11 @@ mod countries;
 mod country;
 mod end_session;
 mod health;
+mod lim;
 mod location;
 mod not_found;
+mod person;
 mod tournament;
-mod lim;
 
 pub fn make_router() -> Router {
     let mut router = Router::make();
@@ -28,6 +29,7 @@ pub fn make_router() -> Router {
         .mount_pack(CountryPack {})
         .mount_pack(LocationPack {})
         .mount_pack(LimPack {})
+        .mount_pack(PersonPack {})
         .mount(NotFoundRoute {});
 
     router

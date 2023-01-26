@@ -55,8 +55,8 @@ create table if not exists lim (
 
 create table if not exists person (
     person_id serial primary key,
-    person_firstname varchar(255) not null check (length(person_firstname) > 0),
-    person_lastname varchar(255) not null check (length(person_lastname) > 0),
+    person_first_name varchar(255) not null check (length(person_first_name) > 0),
+    person_last_name varchar(255) not null check (length(person_last_name) > 0),
     person_gender varchar(2) not null check (person_gender in ('m', 'f', 'nb', 'na', 'gf', 'db', 'dg', 'ag')),
     person_nationality char(2) not null 
         references country (country_code)
