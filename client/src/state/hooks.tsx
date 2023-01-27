@@ -1,7 +1,7 @@
 import { Alert, AlertColor, Snackbar } from '@mui/material'
 import { ReactElement, useState } from 'react'
 
-interface AlertState {
+export interface AlertState {
   display: (msg: string, severity: AlertColor) => void
   hide: () => void
   AlertComponent: () => JSX.Element

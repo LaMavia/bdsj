@@ -18,10 +18,12 @@ import {
 } from '../../api'
 import { PopupProps } from '../../components/PopupInterface'
 import { API_URL } from '../../config'
+import { fetch_api } from '../../helpers/promises'
 import { isAuth } from '../../state/global'
 import { useAlert, useCounter } from '../../state/hooks'
 import { AddCountryPopup } from '../tournaments/AddCountryPopup'
 import { AddPopup as AddTournamentPopup } from '../tournaments/AddPopup'
+import { AddCountryParticipantPopup } from './AddCountryParticipation'
 import { AddPerson } from './AddPerson'
 
 export interface AddParticipantProps extends PopupProps {
@@ -59,84 +61,65 @@ export const AddParticipant = ({
   // get tournaments
   useEffect(() => {
     setLoading(true)
-    fetch(`${API_URL}?path=tournament/get`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-      .then(r => {
-        if (!r.ok || r.status !== 200) {
-          throw new TypeError(`tournament/get => ${r.statusText}`)
-        }
-
-        return r.json() as Promise<ApiResponse<TournamentInfo[]>>
-      })
-      .then(r => {
-        if (!r.ok) {
-          throw new TypeError(r.error)
-        }
-
-        setTournaments(r.data)
-      })
-      .catch((e: TypeError) => alert.display(e.message, 'error'))
-      .finally(() => setLoading(false))
+    fetch_api(alert, 'tournament/get', undefined, setTournaments).finally(() =>
+      setLoading(false),
+    )
   }, [refetch])
 
   // get countries
   useEffect(() => {
     setLoading(true)
-    fetch(`${API_URL}?path=country/get`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-      .then(r => {
-        if (!r.ok || r.status !== 200) {
-          throw new TypeError(`country/get => ${r.statusText}`)
-        }
-
-        return r.json() as Promise<ApiResponse<CountryInfo[]>>
-      })
-      .then(r => {
-        if (!r.ok) {
-          throw new TypeError(r.error)
-        }
-
-        setCountries(r.data)
-      })
-      .catch((e: TypeError) => alert.display(e.message, 'error'))
-      .finally(() => setLoading(false))
+    fetch_api(
+      alert,
+      'tournament/countries/get',
+      {
+        tournament_id: tournamentId,
+      },
+      (r: CountryInfo[]) =>
+        setCountries(
+          r.map(({ country_code, country_name }) => ({
+            country_code,
+            country_name,
+          })),
+        ),
+    ).finally(() => setLoading(false))
   }, [refetch, tournamentId])
 
   // get persons
   useEffect(() => {
     setLoading(true)
-    fetch(`${API_URL}?path=person/get/short`, {
-      method: 'POST',
-      credentials: 'include',
-      body: JSON.stringify({
-        nationalities: [countryCode]
-      }, null, 0)
-    })
-      .then(r => {
-        if (!r.ok || r.status !== 200) {
-          throw new TypeError(`${r.url} => ${r.statusText}`)
-        }
-
-        return r.json() as Promise<ApiResponse<PersonShortInfo[]>>
-      })
-      .then(r => {
-        if (!r.ok) {
-          throw new TypeError(r.error)
-        }
-
-        setPersons(r.data)
-      })
-      .catch((e: TypeError) => alert.display(e.message, 'error'))
-      .finally(() => setLoading(false))
+    fetch_api<PersonShortInfo[]>(
+      alert,
+      'person/get/short',
+      {
+        nationalities: [countryCode],
+      },
+      setPersons,
+    ).finally(() => setLoading(false))
   }, [refetch, countryCode])
 
+  const clear = () => {
+    setCountryCode(country_code)
+    setTournamentId(tournament_id)
+    setPersonId(0)
+  }
+
   const onSubmit = () => {
-    // setLoading(true)
-    // fetch(`${API_URL}?path=`)
+    setLoading(true)
+    fetch_api(
+      alert,
+      'participant/post',
+      {
+        person_id: personId,
+        country_code: countryCode,
+        tournament_id: tournamentId,
+      },
+      _ => {
+        clear()
+        handleClose()
+        onSuccess('Poprawnie dodano zgłoszenie')
+      },
+    ).finally(() => setLoading(false))
   }
 
   return (
@@ -235,9 +218,10 @@ export const AddParticipant = ({
           </Button>
         </DialogActions>
         <alert.AlertComponent />
-        <AddCountryPopup
+        <AddCountryParticipantPopup
           show={showCountry}
           handleClose={() => setShowCountry(false)}
+          tournament_id={tournamentId}
           onError={() => {}}
           onSuccess={() => {
             setRefetch(!refetch)

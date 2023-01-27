@@ -168,14 +168,14 @@ returns trigger as $$
   begin
     select count(*) into used_tickets
     from participant
-    where participant_country_code  = NEW.lim_country_code 
-      and participant_tournament_id = NEW.lim_tournament_id
+    where participant_country_code  = NEW.participant_country_code 
+      and participant_tournament_id = NEW.participant_tournament_id
     ;
 
-    select amount into available_tickets
+    select lim_amount into available_tickets
     from lim
-    where lim_country_code  = NEW.lim_country_code
-      and lim_tournament_id = NEW.lim_tournament_id
+    where lim_country_code  = NEW.participant_country_code
+      and lim_tournament_id = NEW.participant_tournament_id
     ;
 
     if used_tickets >= available_tickets then
@@ -194,5 +194,14 @@ create trigger participant_insert_check_trigger
 
 -- values
 insert into auth(auth_pass) values (md5('xxx'));
+insert into country(
+  country_name, 
+  country_code
+  ) values ('Polska', 'pl'), ('Argentina', 'ar');
+insert into location(
+  location_name, 
+  location_country_code, 
+  location_city
+  ) values ('Wielka Krokiew', 'pl', 'Zakopane'), ('Obelisco de BA', 'ar', 'Buenos Aires');
 
 commit;

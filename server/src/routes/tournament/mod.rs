@@ -16,8 +16,8 @@ impl Mounter for TournamentPack {
         router
             .mount(GetRoute {})
             .mount(DeleteRoute {})
-            .mount(post::Route)
             .mount(CountriesGet {})
+            .mount(post::Route {})
             .mount_pack(stage::Pack {})
     }
 }

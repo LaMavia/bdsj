@@ -6,7 +6,7 @@ use crate::{
     router::{ApiRoute, Method, RouteContext},
 };
 use async_trait::async_trait;
-use serde::{Deserialize};
+use serde::Deserialize;
 use sqlx::Postgres;
 
 pub struct Route;
@@ -35,7 +35,19 @@ impl ApiRoute for Route {
                 ctx.body.clone()
             }
         })
-        .unwrap();
+        .map_err(|e| {
+            format!(
+                "invalid body: {}, expected {{
+                    ids: Option<Vec<i32>>,
+                    first_names: Option<Vec<String>>,
+                    last_names: Option<Vec<String>>,
+                    genders: Option<Vec<String>>,
+                    nationalities: Option<Vec<String>>,
+              }}; error: {}",
+                ctx.body,
+                e.to_string()
+            )
+        })?;
 
         let result = FilterBuilder::new("person", "select * from person where ")
             .add("id", filters.ids)

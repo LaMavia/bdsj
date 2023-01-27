@@ -37,7 +37,7 @@ export interface AddPopupParams {
   tournament_id: number
 }
 
-export const AddPopup = ({
+export const AddCountryParticipantPopup = ({
   show,
   handleClose,
   onSuccess,
@@ -142,7 +142,7 @@ export const AddPopup = ({
   return (
     <>
       <Dialog open={show} onClose={handleClose}>
-        <DialogTitle>Dodawanie turnieju</DialogTitle>
+        <DialogTitle>Dodaj Kraj Uczestniczący</DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ minWidth: '500px' }}>
             <FormControl fullWidth sx={{ flexFlow: 'row', marginTop: '1rem' }}>

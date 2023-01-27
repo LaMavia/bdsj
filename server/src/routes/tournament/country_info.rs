@@ -10,7 +10,7 @@ use sqlx::FromRow;
 pub struct CountriesGet;
 #[derive(Deserialize)]
 struct Body {
-    id: i32,
+    tournament_id: i32,
 }
 
 #[derive(Serialize, FromRow)]
@@ -29,32 +29,35 @@ impl ApiRoute for CountriesGet {
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
         let db = Database::connect().await?;
 
-        let filters: Body = serde_json::from_str(&{
-            if ctx.body.is_empty() {
-                "{}".to_string()
-            } else {
-                ctx.body.clone()
-            }
-        })
-        .unwrap();
+        let filters: Body = serde_json::from_str(&ctx.body).map_err(|e| {
+            format!(
+                "invalid body: {}, expected {{
+                    tournament_id: i32,
+              }}; error: {}",
+                ctx.body,
+                e.to_string()
+            )
+        })?;
 
         let result = sqlx::query_as!(
             CountryInfo,
             "
-          select 
-            country_code, 
-            country_name, 
-            coalesce(
-              count(participant_id), 
-              0
-            ) country_participant_count
-          from participant
-          inner join country
-            on (participant_country_code = country_code)
-          where participant_tournament_id = $1
-          group by country_code, country_name
-        ",
-            filters.id
+            select
+                country_code,
+                country_name,
+                coalesce(
+                    count(participant_id),
+                    0
+                ) country_participant_count
+            from lim
+            left join country
+                on (lim_country_code = country_code)
+            left join participant
+                on (participant_country_code = country_code)
+            where lim_tournament_id = $1
+            group by country_code, country_name
+            ",
+            filters.tournament_id
         )
         .fetch_all(&db.connection)
         .await

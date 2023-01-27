@@ -28,7 +28,7 @@ import { LinkButton } from '../components/LinkButton'
 import { Loader } from '../components/Loader'
 import { API_URL } from '../config'
 import { isAuth } from '../state/global'
-import { AddPopup } from '../views/tournament/AddCountryParticipation'
+import { AddCountryParticipantPopup } from '../views/tournament/AddCountryParticipation'
 import { AddParticipant } from '../views/tournament/AddParticipant'
 import { DeletePopup } from '../views/tournaments/DeletePopup'
 
@@ -141,7 +141,7 @@ export const TournamentRoute = () => {
           sx={{
             flexFlow: 'row',
           }}>
-          <Container sx={{ width: '40%', minWidth: '726px' }}>
+          <Container sx={{ maxWidth: '926px', width: '50vw', minWidth: '826px' }}>
             <Paper
               elevation={12}
               sx={{ padding: '20px', marginBottom: '10px' }}>
@@ -238,7 +238,7 @@ export const TournamentRoute = () => {
         onSuccess={() => navigate(-1)}
         tournament={tournament as TournamentInfo}
       />
-      <AddPopup
+      <AddCountryParticipantPopup
         show={showAdd}
         handleClose={closeAdd}
         onError={() => {}}
@@ -249,7 +249,10 @@ export const TournamentRoute = () => {
         country_code={countryCode}
         tournament_id={id}
         show={showAddParticipant && countryCode !== ''}
-        onSuccess={msg => display(msg, 'success')}
+        onSuccess={msg => {
+          display(msg, 'success')
+          setRefetch(!refetch)
+        }}
         onError={msg => display(msg, 'error')}
         handleClose={closeAddParticipant}
       />
