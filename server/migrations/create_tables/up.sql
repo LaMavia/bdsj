@@ -6,9 +6,7 @@ create function gen_random_uuid()
     as 'SELECT uuid_in(overlay(overlay(md5(random()::text || '':'' || random()::text) placing ''4'' from 13) placing to_hex(floor(random()*(11-8+1) + 8)::int)::text from 17)::cstring);';
 end;
 
--- Your SQL goes here
 begin;
-
 create table if not exists country (
     country_name varchar(255) not null,
     country_code char(2) not null primary key
@@ -88,8 +86,8 @@ create table if not exists jump (
         references participant (participant_id),
     jump_round_id integer not null 
         references round (round_id),
-    jump_score integer not null,
-    jump_distance integer not null,
+    jump_score float not null,
+    jump_distance float not null,
     primary key (jump_participant_id, jump_round_id)
 );
 
@@ -114,8 +112,49 @@ create table if not exists sess (
         references auth (auth_id)
 );
 
+create or replace function authenticate(in session_id text, in duration interval) 
+  returns void as $$
+  declare 
+    found_count integer := 0;
+  begin
+    delete from sess 
+    where sess_expires_at < current_date;
+    
+    update sess set sess_expires_at = current_date + duration
+    where sess_id::text = session_id;
 
--- functions --
+    get diagnostics found_count = ROW_COUNT;
+    if found_count = 0 then
+      raise exception 'INVALID SESSION ID: %', session_id;
+    end if;
+  end
+$$ language plpgsql;
+
+create or replace function start_session(
+  in pass text, 
+  in duration interval
+  ) returns text as $$
+  declare 
+    session_id uuid;
+  begin
+    with insert_result as (
+      insert into sess (sess_auth_id, sess_expires_at) 
+      select auth_id, current_date + duration from auth 
+      where md5(pass :: bytea) = auth_pass
+      limit 1
+      returning sess_id
+    )
+    select sess_id into session_id 
+    from insert_result;
+
+    if session_id is null then
+      raise exception 'INVALID PASSWORD';
+    end if;  
+
+    return session_id :: text;
+  end;
+$$ language plpgsql;
+
 create or replace function stage_name(
   in stage integer
 ) returns text as $$
@@ -136,18 +175,71 @@ $$ language plpgsql;
 create or replace function gen_dysqualification_reason()
 returns text as $$
   begin
-    case floor(random() * 4) 
+    case floor(random() * 2) 
       when 0 then return 'Zły strój';
       when 1 then return 'Braki techniczne';
-      else return '';
+      else        return '';
     end case;
   end;
 $$ language plpgsql;
 
--- create or replace function make_jump(
---   in partitipant_id integer,
---   in round_id integer
--- )
+create or replace function score(
+  in in_participant_id integer,
+  in in_round_id integer
+) returns float as $$
+  declare
+    score float := 0;
+  begin
+    select jump_score + jump_distance into score
+      from jump
+      where jump_participant_id = in_participant_id
+        and jump_round_id = in_round_id
+    ;
+
+    return score;
+  end;
+$$ language plpgsql;
+
+
+create or replace function play_round(
+  in in_round_id         integer,
+  in in_participant_id   integer
+) returns void as $$
+  declare 
+    dist_min float := 60.0;
+    dist_max float := 253.5;
+    score_max float := 20.0;
+    prec float := 10.0;
+  begin
+    if random() > 0.2 then
+    -- jump
+    insert into jump (
+      jump_participant_id,
+      jump_round_id,
+      jump_score,
+      jump_distance
+    ) values (
+      in_participant_id,
+      in_round_id,
+      floor(random() * score_max * prec) / prec,
+      floor(random() * (dist_max - dist_min) * prec) + dist_min / prec
+    );
+
+    else
+    -- disqualify
+    insert into disqualification (
+      disqualification_participant_id,
+      disqualification_round_id,
+      disqualification_reason
+    ) values (
+      in_participant_id,
+      in_round_id,
+      gen_dysqualification_reason()
+    );
+
+    end if;
+  end;
+$$ language plpgsql;
 
 create or replace function next_stage(
   in in_tournament_id integer
@@ -170,8 +262,9 @@ create or replace function next_stage(
       insert into round(round_id) values (null)
         returning round_id into new_round_id;
     end if;
-    -- play the qualifier
+
     if current_stage = 0 and participant_count >= 50 then 
+    -- play the qualifier
       -- insert the round
       update tournament 
         set 
@@ -179,72 +272,72 @@ create or replace function next_stage(
           tournament_stage = 1
         where tournament_id = in_tournament_id
         ;
-      -- play
-    -- play the first round
+      -- play the round
+      select play_round(
+        new_round_id, 
+        participant_id
+        -- row_number() over (order by random())
+      ) from participant
+        where tournament_id = in_tournament_id;
+
+
     elsif current_stage <= 1 then
+    -- play the first round
+      -- insert the round
       update tournament 
         set 
-          tournament_round_qualifier_id = new_round_id,
+          tournament_round_first_id = new_round_id,
           tournament_stage = 2
         where tournament_id = in_tournament_id
         ;
-    -- play the second round
+
+      declare
+        quantifier_round_id integer;
+      begin
+        -- get the qualifier round
+        select 
+          tournament_round_qualifier_id 
+          into quantifier_round_id
+          where tournament_id = in_tournament_id
+        ;
+
+        -- play the round
+        with 
+          possible_participants as (
+            select position_participant_id participant_id
+              from position 
+              where position_round_id = quantifier_round_id
+            union
+            select participant_id
+              from participant
+              where participant_tournament_id = in_tournament_id 
+          ), ranked_participant_ids as (
+            select
+              participant_id, 
+              rank() over (
+                order by score(
+                  participant_id, 
+                  quantifier_round_id
+                ) asc
+              ) __rank
+            from possible_participants
+        )
+        select play_round(
+          new_round_id, 
+          participant_id 
+        ) from ranked_participant_ids
+        having rank <= 50
+        order by __rank asc;
+      end;
+
+
     else 
+    -- play the second round
       
-    end if;
-
-
-    if new_round_id > 0 then
-      call play_round(new_round_id);
     end if;
   end;
 $$ language plpgsql;
 
--- session
-create or replace function authenticate(in session_id text, in duration interval) 
-  returns void as $$
-  declare 
-    found_count integer := 0;
-  begin
-    delete from sess 
-    where sess_expires_at < current_date;
-    
-    update sess set sess_expires_at = current_date + duration
-    where sess_id::text = session_id;
-
-    get diagnostics found_count = ROW_COUNT;
-    if found_count = 0 then
-      raise exception 'INVALID SESSION ID: %', session_id;
-    end if;
-  end
-  $$ language plpgsql;
-
-create or replace function start_session(
-  in pass text, 
-  in duration interval) returns text as $$
-  declare 
-    session_id uuid;
-  begin
-    with insert_result as (
-      insert into sess (sess_auth_id, sess_expires_at) 
-      select auth_id, current_date + duration from auth 
-      where md5(pass :: bytea) = auth_pass
-      limit 1
-      returning sess_id
-    )
-    select sess_id into session_id 
-    from insert_result;
-
-    if session_id is null then
-      raise exception 'INVALID PASSWORD';
-    end if;  
-
-    return session_id :: text;
-  end;
-
-  $$ language plpgsql;
-
--- triggers
 create or replace function participant_insert_check() 
 returns trigger as $$
   declare 
@@ -298,8 +391,7 @@ create trigger check_tournament_location_trigger
   for each row
   execute procedure check_tournament_location();
 
--- values
-insert into auth(auth_pass) values (md5('xxx'));
+
 insert into country(
   country_name, 
   country_code
@@ -324,4 +416,6 @@ insert into tournament(
   (1, 'El Primer Torneo de BA', 2023, 2, 'ar')
   ;
 
+
+insert into auth(auth_pass) values (md5('xxx'));
 commit;
