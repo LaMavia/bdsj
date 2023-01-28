@@ -18,4 +18,8 @@ drop trigger if exists participant_insert_check_trigger
   on participant 
   cascade;
 
+drop trigger if exists check_tournament_location_trigger
+  on tournament 
+  cascade;
+
 commit;

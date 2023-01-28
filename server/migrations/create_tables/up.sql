@@ -69,7 +69,8 @@ create table if not exists participant (
     participant_tournament_id integer not null 
         references tournament (tournament_id),
     participant_person_id integer not null 
-        references person (person_id)
+        references person (person_id),
+    unique (participant_tournament_id, participant_person_id)
 );
 
 create table if not exists position (
@@ -115,6 +116,90 @@ create table if not exists sess (
 
 
 -- functions --
+create or replace function stage_name(
+  in stage integer
+) returns text as $$
+  declare 
+    name text;
+  begin
+    case stage
+      when 0 then name := 'Zapisy' ;
+      when 1 then name := 'Kwalifikacje';
+      when 2 then name := 'Pierwsza seria';
+      when 3 then name := 'Druga seria';
+      else        name := 'Zakończone';
+    end case;
+    return name;
+  end;
+$$ language plpgsql;
+
+create or replace function gen_dysqualification_reason()
+returns text as $$
+  begin
+    case floor(random() * 4) 
+      when 0 then return 'Zły strój';
+      when 1 then return 'Braki techniczne';
+      else return '';
+    end case;
+  end;
+$$ language plpgsql;
+
+-- create or replace function make_jump(
+--   in partitipant_id integer,
+--   in round_id integer
+-- )
+
+create or replace function next_stage(
+  in in_tournament_id integer
+) returns void as $$
+  declare
+    current_stage integer;
+    participant_count integer;
+    new_round_id integer := -1;
+  begin
+    select tournament_stage into current_stage
+      from tournament where tournament_id = in_tournament_id;
+
+    if current_stage > 3 then return; end if;
+    select 
+      count(participant_person_id) into participant_count
+      from participant 
+      where participant_tournament_id = in_tournament_id;
+
+    if current_stage < 2 then 
+      insert into round(round_id) values (null)
+        returning round_id into new_round_id;
+    end if;
+    -- play the qualifier
+    if current_stage = 0 and participant_count >= 50 then 
+      -- insert the round
+      update tournament 
+        set 
+          tournament_round_qualifier_id = new_round_id,
+          tournament_stage = 1
+        where tournament_id = in_tournament_id
+        ;
+      -- play
+    -- play the first round
+    elsif current_stage <= 1 then
+      update tournament 
+        set 
+          tournament_round_qualifier_id = new_round_id,
+          tournament_stage = 2
+        where tournament_id = in_tournament_id
+        ;
+    -- play the second round
+    else 
+      
+    end if;
+
+
+    if new_round_id > 0 then
+      call play_round(new_round_id);
+    end if;
+  end;
+$$ language plpgsql;
+
 -- session
 create or replace function authenticate(in session_id text, in duration interval) 
   returns void as $$
@@ -192,6 +277,27 @@ create trigger participant_insert_check_trigger
   for each row
   execute procedure participant_insert_check();
 
+create or replace function check_tournament_location()
+returns trigger as $$
+  begin
+    if (
+      select location_country_code 
+      from location 
+      where location_id = NEW.tournament_location_id
+      ) <> NEW.tournament_host then
+      raise exception 'Zawody muszą odbywać się na terenie kraju goszczącego';
+    end if;
+
+    return NEW;
+  end;
+$$ language plpgsql;
+
+create trigger check_tournament_location_trigger
+  before insert
+  on tournament
+  for each row
+  execute procedure check_tournament_location();
+
 -- values
 insert into auth(auth_pass) values (md5('xxx'));
 insert into country(
@@ -199,9 +305,23 @@ insert into country(
   country_code
   ) values ('Polska', 'pl'), ('Argentina', 'ar');
 insert into location(
+  location_id,
   location_name, 
   location_country_code, 
   location_city
-  ) values ('Wielka Krokiew', 'pl', 'Zakopane'), ('Obelisco de BA', 'ar', 'Buenos Aires');
+  ) values 
+    (1, 'Wielka Krokiew', 'pl', 'Zakopane'), 
+    (2, 'Obelisco de BA', 'ar', 'Buenos Aires')
+    ;
+
+insert into tournament(
+  tournament_id,
+  tournament_name,
+  tournament_year, 
+  tournament_location_id,
+  tournament_host
+) values 
+  (1, 'El Primer Torneo de BA', 2023, 2, 'ar')
+  ;
 
 commit;
