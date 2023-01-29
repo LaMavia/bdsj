@@ -26,27 +26,16 @@ import { Link } from 'react-router-dom'
 import { ApiResponse, TournamentInfo } from '../api'
 import { LinkButton } from '../components/LinkButton'
 import { Loader } from '../components/Loader'
+import { TextProp, TextPropProps } from '../components/TextProp'
 import { API_URL } from '../config'
+import { fetch_api } from '../helpers/promises'
 import { isAuth } from '../state/global'
+import { useAlert } from '../state/hooks'
 import { AddCountryParticipantPopup } from '../views/tournament/AddCountryParticipation'
 import { AddParticipant } from '../views/tournament/AddParticipant'
+import { Stage } from '../views/tournament/Stage'
 import { DeletePopup } from '../views/tournaments/DeletePopup'
 
-interface TextPropProps {
-  label: string
-  value: string
-  link: string
-}
-const TextProp = ({ label, value, link }: TextPropProps) => (
-  <ListItem sx={{ display: 'block' }}>
-    <ListItemText>{label}:</ListItemText>
-    <ListItemText>
-      <Link style={{ color: 'inherit' }} to={link}>
-        {value}
-      </Link>
-    </ListItemText>
-  </ListItem>
-)
 
 export const TournamentRoute = () => {
   const match = useMatch('/tournament/:id')
@@ -61,9 +50,7 @@ export const TournamentRoute = () => {
   const navigate = useNavigate()
 
   // alert
-  const [showAlert, setShowAlert] = useState(false)
-  const [alertMsg, setAlertMsg] = useState('')
-  const [alertSeverity, setAlertSeverity] = useState<AlertColor>('info')
+  const alert = useAlert()
 
   // delete popup
   const [showDelete, setShowDelete] = useState(false)
@@ -83,49 +70,21 @@ export const TournamentRoute = () => {
   const closeDelete = () => setShowDelete(false)
   const closeAdd = () => setShowAdd(false)
   const closeAddParticipant = () => setShowAddParticipant(false)
-  const display = (msg: string, severity: AlertColor) => {
-    setAlertMsg(msg)
-    setAlertSeverity(severity)
-    setShowAlert(true)
-  }
 
   // onMount
   useEffect(() => {
     setLoading(true)
-    fetch(`${API_URL}?path=tournament/get`, {
-      method: 'POST',
-      credentials: 'include',
-      body: JSON.stringify({
+    fetch_api<TournamentInfo[]>(
+      alert,
+      'tournament/get',
+      {
         ids: [id],
-      }),
-    })
-      .then(r => {
-        if (r.status !== 200) {
-          throw new TypeError(r.statusText)
-        }
-
-        return r.json() as Promise<ApiResponse<TournamentInfo[], string>>
-      })
-      .then(r => {
-        if (!r.ok) {
-          throw new TypeError(r.error)
-        }
-
-        if (!r.data.length) {
-          throw new TypeError(`Invalid id=${id}`)
-        }
-
-        setTournament(r.data[0])
-        setCountryCode(r.data[0].tournament_host_code)
-      })
-      .catch((e: TypeError) => {
-        setAlertMsg(e.message)
-        setShowAlert(true)
-        setAlertSeverity('error')
-      })
-      .finally(() => {
-        setLoading(false)
-      })
+      },
+      data => {
+        setTournament(data[0])
+        setCountryCode(data[0].tournament_host_code)
+      },
+    ).finally(() => setLoading(false))
   }, [refetch])
 
   return loading ? (
@@ -141,7 +100,8 @@ export const TournamentRoute = () => {
           sx={{
             flexFlow: 'row',
           }}>
-          <Container sx={{ maxWidth: '926px', width: '50vw', minWidth: '826px' }}>
+          <Container
+            sx={{ maxWidth: '926px', width: '50vw', minWidth: '826px' }}>
             <Paper
               elevation={12}
               sx={{ padding: '20px', marginBottom: '10px' }}>
@@ -214,23 +174,11 @@ export const TournamentRoute = () => {
                 ))}
               </List>
             </Paper>
-            <Paper elevation={5}>
-              <List sx={{ maxHeight: '70vh', overflowY: 'scroll' }}></List>
-            </Paper>
+            <Stage alert={alert} tournament_id={id} />
           </Container>
         </Grid>
       </Box>
-      <Snackbar
-        open={showAlert}
-        autoHideDuration={6000}
-        onClose={() => setShowAlert(false)}>
-        <Alert
-          onClose={() => setShowAlert(false)}
-          severity={alertSeverity}
-          sx={{ width: '100%' }}>
-          {alertMsg}
-        </Alert>
-      </Snackbar>
+      <alert.AlertComponent />
       <DeletePopup
         show={showDelete}
         handleClose={closeDelete}
@@ -242,7 +190,7 @@ export const TournamentRoute = () => {
         show={showAdd}
         handleClose={closeAdd}
         onError={() => {}}
-        onSuccess={msg => (display(msg, 'success'), setRefetch(!refetch))}
+        onSuccess={msg => (alert.display(msg, 'success'), setRefetch(!refetch))}
         tournament_id={tournament.tournament_id}
       />
       <AddParticipant
@@ -250,10 +198,10 @@ export const TournamentRoute = () => {
         tournament_id={id}
         show={showAddParticipant && countryCode !== ''}
         onSuccess={msg => {
-          display(msg, 'success')
+          alert.display(msg, 'success')
           setRefetch(!refetch)
         }}
-        onError={msg => display(msg, 'error')}
+        onError={msg => alert.display(msg, 'error')}
         handleClose={closeAddParticipant}
       />
     </>
@@ -264,7 +212,6 @@ export const TournamentRoute = () => {
         <DialogContentText>
           Nie znaleziono turnieju o id = {id}
         </DialogContentText>
-        <DialogContentText>{alertMsg}</DialogContentText>
       </DialogContent>
       <DialogActions sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
         <LinkButton to="/">Strona Główna</LinkButton>

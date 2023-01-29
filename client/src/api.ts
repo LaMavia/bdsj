@@ -1,3 +1,7 @@
+type Option<T> = T | undefined
+type i32 = number
+type f64 = number
+
 export interface ApiResponse<T, E = string> {
   data: T
   error: E
@@ -50,4 +54,35 @@ export interface PersonInfo {
   person_gender: string
   person_nationality_code: string
   person_nationality_name: string
+}
+
+export interface RoundShort {
+  round_id: number
+  round_date: string
+}
+
+export interface StageInfo {
+  stage_nr: number
+  stage?: String
+  qualifier?: RoundShort
+  first?: RoundShort
+  second?: RoundShort
+}
+
+export interface RoundEntry {
+  participant_id: i32
+  participant_country_code: String
+  position_initial: i32
+  position_final: Option<i32>
+  person_id: i32
+  person_first_name: String
+  person_last_name: String
+  jump_score: Option<f64>
+  jump_distance: Option<f64>
+  score: Option<f64>
+  disqualification_reason: String
+}
+
+export interface PersonEntry {
+  
 }

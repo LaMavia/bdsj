@@ -550,6 +550,7 @@ returns trigger as $$
   declare 
     available_tickets integer;
     used_tickets      integer;
+    current_stage     integer;
   begin
     select count(*) into used_tickets
     from participant
@@ -563,15 +564,23 @@ returns trigger as $$
       and lim_tournament_id = NEW.participant_tournament_id
     ;
 
+    select tournament_stage into current_stage
+    from tournament
+    where tournament_id = NEW.participant_tournament_id
+    ;
+
     raise notice 
-      'tournament: %, country: %, tickets: %/%', 
+      'tournament: %, stage: %, country: %, tickets: %/%', 
       NEW.participant_tournament_id,
+      current_stage,
       NEW.participant_country_code,
       used_tickets, 
       available_tickets
     ;
 
-    if available_tickets is null or used_tickets >= available_tickets then
+    if current_stage > 0 then 
+      raise exception 'Zapisy zostały zamknięte';
+    elsif available_tickets is null or used_tickets >= available_tickets then
       raise exception 'Przekroczono kwotę startową';
     end if;
 
@@ -601,7 +610,7 @@ returns trigger as $$
 $$ language plpgsql;
 
 create trigger check_tournament_location_trigger
-  before insert
+  before insert or update
   on tournament
   for each row
   execute procedure check_tournament_location();
