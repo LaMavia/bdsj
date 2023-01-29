@@ -16,7 +16,15 @@ returns trigger as $$
       and lim_tournament_id = NEW.participant_tournament_id
     ;
 
-    if used_tickets >= available_tickets then
+    raise notice 
+      'tournament: %, country: %, tickets: %/%', 
+      NEW.participant_tournament_id,
+      NEW.participant_country_code,
+      used_tickets, 
+      available_tickets
+    ;
+
+    if available_tickets is null or used_tickets >= available_tickets then
       raise exception 'Przekroczono kwotę startową';
     end if;
 

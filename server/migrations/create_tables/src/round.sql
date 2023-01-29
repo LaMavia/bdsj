@@ -49,10 +49,10 @@ create or replace function play_round(
   in in_participant_id   integer
 ) returns void as $$
   declare 
-    dist_min float := 60.0;
-    dist_max float := 253.5;
+    dist_min  float := 60.0;
+    dist_max  float := 253.5;
     score_max float := 20.0;
-    prec float := 10.0;
+    prec      float := 10.0;
   begin
     if random() > 0.2 then
     -- jump
@@ -65,7 +65,7 @@ create or replace function play_round(
       in_participant_id,
       in_round_id,
       floor(random() * score_max * prec) / prec,
-      floor(random() * (dist_max - dist_min) * prec) + dist_min / prec
+      (floor(random() * (dist_max - dist_min) * prec) + dist_min) / prec
     );
 
     else
@@ -84,16 +84,129 @@ create or replace function play_round(
   end;
 $$ language plpgsql;
 
+create or replace function get_last_round(
+  in in_tournament_id integer
+) returns integer as $$
+  declare
+    last_round_id integer;
+    current_stage integer;
+  begin
+    select 
+      tournament_stage into current_stage
+      from tournament 
+      where tournament_id = in_tournament_id
+    ;
+
+    if current_stage = 0 then return 0; end if;
+
+    case current_stage 
+      when 1 then 
+        select 
+          tournament_round_qualifier_id 
+          into last_round_id
+          from tournament
+          where tournament_id = in_tournament_id
+        ;
+      when 2 then 
+        select 
+          tournament_round_first_id 
+          into last_round_id
+          from tournament
+          where tournament_id = in_tournament_id
+        ;
+      when 3 then 
+        select 
+          tournament_round_second_id 
+          into last_round_id
+          from tournament
+          where tournament_id = in_tournament_id
+        ;
+      end case;
+
+      return last_round_id;
+  end;
+$$ language plpgsql;
+
+create or replace function sum_up_round(
+  in last_round_id integer
+) returns void as $$
+  begin
+    with positioning as (
+      select 
+        position_participant_id participant_id,
+        position_round_id round_id,
+        rank() over (order by 
+          score(
+            position_participant_id, 
+            position_round_id
+          )) new_final
+      from position 
+      where position_round_id = last_round_id
+    ) update position 
+      set position_final = new_final
+      from positioning 
+      where position_round_id = round_id
+        and position_participant_id = participant_id
+    ;
+  end;
+$$ language plpgsql;
+
+create or replace function initialise_positions(
+  in in_tournament_id integer,
+  in last_round_id    integer,
+  in new_round_id     integer,
+  in in_limit         integer
+) returns void as $$
+  begin
+  with
+    possible_participants as (
+      select position_participant_id participant_id
+        from position 
+        where position_round_id = last_round_id
+      union
+      select participant_id
+        from participant
+        where participant_tournament_id = in_tournament_id 
+    ),
+    ranked_participant_ids as (
+      select
+        participant_id, 
+        rank() over (
+          order by score(
+            participant_id, 
+            last_round_id
+          ) asc
+        ) __rank
+      from possible_participants
+      order by __rank asc
+    )  
+  insert into position (
+    position_participant_id,
+    position_round_id,
+    position_initial
+  ) select 
+      participant_id,
+      new_round_id,
+      row_number() over (order by random())
+    from ranked_participant_ids
+    where __rank <= in_limit
+  ;
+  end;
+$$ language plpgsql;
+
 create or replace function next_stage(
   in in_tournament_id integer
 ) returns void as $$
   declare
-    current_stage integer;
+    current_stage     integer;
     participant_count integer;
-    new_round_id integer := -1;
+    new_round_id      integer := -1;
+    last_round_id     integer;
   begin
     select tournament_stage into current_stage
       from tournament where tournament_id = in_tournament_id;
+
+    raise notice 'Current stage: %', current_stage;
 
     if current_stage > 3 then return; end if;
     select 
@@ -101,12 +214,17 @@ create or replace function next_stage(
       from participant 
       where participant_tournament_id = in_tournament_id;
 
-    if current_stage < 2 then 
-      insert into round(round_id) values (null)
+    if current_stage < 3 then
+      raise notice 'Inserting new round'; 
+      insert into round(round_date) values (current_date)
         returning round_id into new_round_id;
     end if;
 
+    -- get the last round
+    select get_last_round(in_tournament_id) into last_round_id;
+
     if current_stage = 0 and participant_count >= 50 then 
+    raise notice 'Starting the qualifier round: #participants = %', participant_count ;
     -- play the qualifier
       -- insert the round
       update tournament 
@@ -116,13 +234,25 @@ create or replace function next_stage(
         where tournament_id = in_tournament_id
         ;
       -- play the round
-      select play_round(
+      perform play_round(
         new_round_id, 
         participant_id
-        -- row_number() over (order by random())
       ) from participant
-        where tournament_id = in_tournament_id;
+        where participant_tournament_id = in_tournament_id;
 
+      -- set the positions
+      raise notice 'Inserting new initial positions';
+      insert into position (
+        position_participant_id,
+        position_round_id,
+        position_initial
+      ) select 
+          participant_id,
+          new_round_id,
+          row_number() over (order by random())
+        from participant
+        where participant_tournament_id = in_tournament_id
+      ;
 
     elsif current_stage <= 1 then
     -- play the first round
@@ -134,49 +264,55 @@ create or replace function next_stage(
         where tournament_id = in_tournament_id
         ;
 
-      declare
-        quantifier_round_id integer;
-      begin
-        -- get the qualifier round
-        select 
-          tournament_round_qualifier_id 
-          into quantifier_round_id
-          where tournament_id = in_tournament_id
-        ;
+        -- finish the qualifier
+        if last_round_id is not null then
+          raise notice 'Summing up the qualifier round';
+          perform sum_up_round(last_round_id);
+        end if;
+
+        raise notice 'Inserting new initial positions';
+        perform initialise_positions(
+          in_tournament_id,
+          last_round_id,
+          new_round_id,
+          50
+        );
 
         -- play the round
-        with 
-          possible_participants as (
-            select position_participant_id participant_id
-              from position 
-              where position_round_id = quantifier_round_id
-            union
-            select participant_id
-              from participant
-              where participant_tournament_id = in_tournament_id 
-          ), ranked_participant_ids as (
-            select
-              participant_id, 
-              rank() over (
-                order by score(
-                  participant_id, 
-                  quantifier_round_id
-                ) asc
-              ) __rank
-            from possible_participants
-        )
-        select play_round(
-          new_round_id, 
-          participant_id 
-        ) from ranked_participant_ids
-        having rank <= 50
-        order by __rank asc;
-      end;
-
-
+        raise notice 'Starting the first major round';
+        perform play_round(
+            new_round_id, 
+            position_participant_id 
+        ) from position 
+          where position_round_id = new_round_id
+        ;
     else 
     -- play the second round
-      
+      update tournament 
+        set 
+          tournament_round_first_id = new_round_id,
+          tournament_stage = 3
+        where tournament_id = in_tournament_id
+        ;
+
+      raise notice 'Summing up the first major round';
+      perform sum_up_round(last_round_id);
+
+      raise notice 'Inserting new initial positions';
+      perform initialise_positions(
+        in_tournament_id,
+        last_round_id,
+        new_round_id,
+        30
+      );
+
+      raise notice 'Starting the second major round';
+      perform play_round(
+          new_round_id, 
+          position_participant_id 
+      ) from position 
+        where position_round_id = new_round_id
+      ;
     end if;
   end;
 $$ language plpgsql;

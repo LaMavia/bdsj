@@ -5,6 +5,7 @@ use warnings;
 use warnings FATAL => 'all';
 use File::Spec::Functions 'catfile';
 use File::Basename;
+use Cwd qw(abs_path);
 
 sub process_file {
     my ($file) = @_;
@@ -66,6 +67,10 @@ sub process_file {
                 $foreign_keys =~ s/@/$foreign_table/gi;
 
                 $line =~ s/&fk\s*$re_identifier_list\s*->\s*$re_identifier\s*$re_identifier_list/constraint \@_${foreign_table}_fk\n${indent}${indent}foreign key $own_keys\n${indent}${indent}references $foreign_table $foreign_keys/gi;
+            }
+            elsif ($name =~ /here/i) {
+                my $apath = abs_path($base_dir);
+                $line =~ s/&here/$apath/gi;
             }
         }
         # table properties

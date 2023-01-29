@@ -206,10 +206,10 @@ create or replace function play_round(
   in in_participant_id   integer
 ) returns void as $$
   declare 
-    dist_min float := 60.0;
-    dist_max float := 253.5;
+    dist_min  float := 60.0;
+    dist_max  float := 253.5;
     score_max float := 20.0;
-    prec float := 10.0;
+    prec      float := 10.0;
   begin
     if random() > 0.2 then
     -- jump
@@ -222,7 +222,7 @@ create or replace function play_round(
       in_participant_id,
       in_round_id,
       floor(random() * score_max * prec) / prec,
-      floor(random() * (dist_max - dist_min) * prec) + dist_min / prec
+      (floor(random() * (dist_max - dist_min) * prec) + dist_min) / prec
     );
 
     else
@@ -241,16 +241,129 @@ create or replace function play_round(
   end;
 $$ language plpgsql;
 
+create or replace function get_last_round(
+  in in_tournament_id integer
+) returns integer as $$
+  declare
+    last_round_id integer;
+    current_stage integer;
+  begin
+    select 
+      tournament_stage into current_stage
+      from tournament 
+      where tournament_id = in_tournament_id
+    ;
+
+    if current_stage = 0 then return 0; end if;
+
+    case current_stage 
+      when 1 then 
+        select 
+          tournament_round_qualifier_id 
+          into last_round_id
+          from tournament
+          where tournament_id = in_tournament_id
+        ;
+      when 2 then 
+        select 
+          tournament_round_first_id 
+          into last_round_id
+          from tournament
+          where tournament_id = in_tournament_id
+        ;
+      when 3 then 
+        select 
+          tournament_round_second_id 
+          into last_round_id
+          from tournament
+          where tournament_id = in_tournament_id
+        ;
+      end case;
+
+      return last_round_id;
+  end;
+$$ language plpgsql;
+
+create or replace function sum_up_round(
+  in last_round_id integer
+) returns void as $$
+  begin
+    with positioning as (
+      select 
+        position_participant_id participant_id,
+        position_round_id round_id,
+        rank() over (order by 
+          score(
+            position_participant_id, 
+            position_round_id
+          )) new_final
+      from position 
+      where position_round_id = last_round_id
+    ) update position 
+      set position_final = new_final
+      from positioning 
+      where position_round_id = round_id
+        and position_participant_id = participant_id
+    ;
+  end;
+$$ language plpgsql;
+
+create or replace function initialise_positions(
+  in in_tournament_id integer,
+  in last_round_id    integer,
+  in new_round_id     integer,
+  in in_limit         integer
+) returns void as $$
+  begin
+  with
+    possible_participants as (
+      select position_participant_id participant_id
+        from position 
+        where position_round_id = last_round_id
+      union
+      select participant_id
+        from participant
+        where participant_tournament_id = in_tournament_id 
+    ),
+    ranked_participant_ids as (
+      select
+        participant_id, 
+        rank() over (
+          order by score(
+            participant_id, 
+            last_round_id
+          ) asc
+        ) __rank
+      from possible_participants
+      order by __rank asc
+    )  
+  insert into position (
+    position_participant_id,
+    position_round_id,
+    position_initial
+  ) select 
+      participant_id,
+      new_round_id,
+      row_number() over (order by random())
+    from ranked_participant_ids
+    where __rank <= in_limit
+  ;
+  end;
+$$ language plpgsql;
+
 create or replace function next_stage(
   in in_tournament_id integer
 ) returns void as $$
   declare
-    current_stage integer;
+    current_stage     integer;
     participant_count integer;
-    new_round_id integer := -1;
+    new_round_id      integer := -1;
+    last_round_id     integer;
   begin
     select tournament_stage into current_stage
       from tournament where tournament_id = in_tournament_id;
+
+    raise notice 'Current stage: %', current_stage;
 
     if current_stage > 3 then return; end if;
     select 
@@ -258,12 +371,17 @@ create or replace function next_stage(
       from participant 
       where participant_tournament_id = in_tournament_id;
 
-    if current_stage < 2 then 
-      insert into round(round_id) values (null)
+    if current_stage < 3 then
+      raise notice 'Inserting new round'; 
+      insert into round(round_date) values (current_date)
         returning round_id into new_round_id;
     end if;
 
+    -- get the last round
+    select get_last_round(in_tournament_id) into last_round_id;
+
     if current_stage = 0 and participant_count >= 50 then 
+    raise notice 'Starting the qualifier round: #participants = %', participant_count ;
     -- play the qualifier
       -- insert the round
       update tournament 
@@ -273,13 +391,25 @@ create or replace function next_stage(
         where tournament_id = in_tournament_id
         ;
       -- play the round
-      select play_round(
+      perform play_round(
         new_round_id, 
         participant_id
-        -- row_number() over (order by random())
       ) from participant
-        where tournament_id = in_tournament_id;
+        where participant_tournament_id = in_tournament_id;
 
+      -- set the positions
+      raise notice 'Inserting new initial positions';
+      insert into position (
+        position_participant_id,
+        position_round_id,
+        position_initial
+      ) select 
+          participant_id,
+          new_round_id,
+          row_number() over (order by random())
+        from participant
+        where participant_tournament_id = in_tournament_id
+      ;
 
     elsif current_stage <= 1 then
     -- play the first round
@@ -291,49 +421,55 @@ create or replace function next_stage(
         where tournament_id = in_tournament_id
         ;
 
-      declare
-        quantifier_round_id integer;
-      begin
-        -- get the qualifier round
-        select 
-          tournament_round_qualifier_id 
-          into quantifier_round_id
-          where tournament_id = in_tournament_id
-        ;
+        -- finish the qualifier
+        if last_round_id is not null then
+          raise notice 'Summing up the qualifier round';
+          perform sum_up_round(last_round_id);
+        end if;
+
+        raise notice 'Inserting new initial positions';
+        perform initialise_positions(
+          in_tournament_id,
+          last_round_id,
+          new_round_id,
+          50
+        );
 
         -- play the round
-        with 
-          possible_participants as (
-            select position_participant_id participant_id
-              from position 
-              where position_round_id = quantifier_round_id
-            union
-            select participant_id
-              from participant
-              where participant_tournament_id = in_tournament_id 
-          ), ranked_participant_ids as (
-            select
-              participant_id, 
-              rank() over (
-                order by score(
-                  participant_id, 
-                  quantifier_round_id
-                ) asc
-              ) __rank
-            from possible_participants
-        )
-        select play_round(
-          new_round_id, 
-          participant_id 
-        ) from ranked_participant_ids
-        having rank <= 50
-        order by __rank asc;
-      end;
-
-
+        raise notice 'Starting the first major round';
+        perform play_round(
+            new_round_id, 
+            position_participant_id 
+        ) from position 
+          where position_round_id = new_round_id
+        ;
     else 
     -- play the second round
-      
+      update tournament 
+        set 
+          tournament_round_first_id = new_round_id,
+          tournament_stage = 3
+        where tournament_id = in_tournament_id
+        ;
+
+      raise notice 'Summing up the first major round';
+      perform sum_up_round(last_round_id);
+
+      raise notice 'Inserting new initial positions';
+      perform initialise_positions(
+        in_tournament_id,
+        last_round_id,
+        new_round_id,
+        30
+      );
+
+      raise notice 'Starting the second major round';
+      perform play_round(
+          new_round_id, 
+          position_participant_id 
+      ) from position 
+        where position_round_id = new_round_id
+      ;
     end if;
   end;
 $$ language plpgsql;
@@ -356,7 +492,15 @@ returns trigger as $$
       and lim_tournament_id = NEW.participant_tournament_id
     ;
 
-    if used_tickets >= available_tickets then
+    raise notice 
+      'tournament: %, country: %, tickets: %/%', 
+      NEW.participant_tournament_id,
+      NEW.participant_country_code,
+      used_tickets, 
+      available_tickets
+    ;
+
+    if available_tickets is null or used_tickets >= available_tickets then
       raise exception 'Przekroczono kwotę startową';
     end if;
 
@@ -392,11 +536,11 @@ create trigger check_tournament_location_trigger
   execute procedure check_tournament_location();
 
 
-insert into country(
+insert into country (
   country_name, 
   country_code
   ) values ('Polska', 'pl'), ('Argentina', 'ar');
-insert into location(
+insert into location (
   location_id,
   location_name, 
   location_country_code, 
@@ -404,18 +548,263 @@ insert into location(
   ) values 
     (1, 'Wielka Krokiew', 'pl', 'Zakopane'), 
     (2, 'Obelisco de BA', 'ar', 'Buenos Aires')
-    ;
+;
 
-insert into tournament(
+insert into tournament (
   tournament_id,
   tournament_name,
   tournament_year, 
   tournament_location_id,
   tournament_host
 ) values 
-  (1, 'El Primer Torneo de BA', 2023, 2, 'ar')
-  ;
+  (1, 'El Primer Torneo de BA', 2023, 2, 'ar'),
+  (2, 'Turniej Trzech Skoczni', 2023, 1, 'pl')
+;
 
+insert into person (
+  person_first_name,
+  person_last_name,
+  person_gender,
+  person_nationality
+) values
+  ('Avye','Snyder','m','pl'),
+  ('Gil','Reynolds','m','pl'),
+  ('Bertha','Lara','f','ar'),
+  ('Neil','Petty','f','ar'),
+  ('Axel','Brooks','nb','pl'),
+  ('Lionel','Cain','nb','pl'),
+  ('Alexis','Bonner','m','ar'),
+  ('Yardley','Meyer','m','ar'),
+  ('Salvador','Webster','f','pl'),
+  ('Emily','Hernandez','f','pl'),
+  ('Dexter','Walton','nb','ar'),
+  ('Whoopi','Mccoy','nb','ar'),
+  ('Candace','Ross','m','pl'),
+  ('Oscar','Hood','m','pl'),
+  ('Jordan','Stuart','f','ar'),
+  ('Frances','Benson','f','ar'),
+  ('Drew','Santana','nb','pl'),
+  ('Madeline','Burch','nb','pl'),
+  ('Hop','Bullock','m','ar'),
+  ('Moses','Weiss','m','ar'),
+  ('Dean','Dawson','f','pl'),
+  ('Kenneth','Hamilton','f','pl'),
+  ('Grace','Crawford','nb','ar'),
+  ('Garrett','Finch','nb','ar'),
+  ('Shellie','Parks','m','pl'),
+  ('Harlan','Blackwell','m','pl'),
+  ('Melodie','Whitley','f','ar'),
+  ('Merritt','King','f','ar'),
+  ('Noelani','Wade','nb','pl'),
+  ('Patience','Alvarez','nb','pl'),
+  ('Vivien','England','m','ar'),
+  ('Gray','Cantu','m','ar'),
+  ('Zachary','Andrews','f','pl'),
+  ('Wynter','Velazquez','f','pl'),
+  ('Christopher','Henson','nb','ar'),
+  ('Rooney','Delacruz','nb','ar'),
+  ('Vielka','Sampson','m','pl'),
+  ('Helen','Daniels','m','pl'),
+  ('Lance','Mcclure','f','ar'),
+  ('Lyle','Fry','f','ar'),
+  ('Amir','Drake','nb','pl'),
+  ('Camille','Clayton','nb','pl'),
+  ('Dalton','Meyer','m','ar'),
+  ('Burton','Sharpe','m','ar'),
+  ('Leo','Tate','f','pl'),
+  ('Colin','Travis','f','pl'),
+  ('Channing','Jimenez','nb','ar'),
+  ('Christine','Figueroa','nb','ar'),
+  ('Laurel','Whitaker','m','pl'),
+  ('Henry','Wallace','m','pl'),
+  ('Aidan','Hodges','f','ar'),
+  ('Margaret','Meadows','f','ar'),
+  ('Germane','Kim','nb','pl'),
+  ('Xanthus','Dalton','nb','pl'),
+  ('Hamilton','Oconnor','m','ar'),
+  ('Kelly','Johns','m','ar'),
+  ('Honorato','Howard','f','pl'),
+  ('Kylan','Palmer','f','pl'),
+  ('Sheila','Bradley','nb','ar'),
+  ('Rooney','Foster','nb','ar'),
+  ('Maryam','Ingram','m','pl'),
+  ('Gretchen','Mckinney','m','pl'),
+  ('Elliott','Graham','f','ar'),
+  ('Tashya','Holland','f','ar'),
+  ('Riley','Phillips','nb','pl'),
+  ('Buckminster','Holden','nb','pl'),
+  ('Ila','Campos','m','ar'),
+  ('Cain','Evans','m','ar'),
+  ('Nehru','Dudley','f','pl'),
+  ('Chancellor','Ballard','f','pl'),
+  ('Rachel','Mcgee','nb','ar'),
+  ('Shelly','Brooks','nb','ar'),
+  ('Demetria','Rosario','m','pl'),
+  ('Violet','Barr','m','pl'),
+  ('Xena','Barron','f','ar'),
+  ('Daniel','Cox','f','ar'),
+  ('Kennan','Carter','nb','pl'),
+  ('Cameron','Adkins','nb','pl'),
+  ('Chancellor','Young','m','ar'),
+  ('Barry','Shepherd','m','ar'),
+  ('Kasimir','Mcintyre','f','pl'),
+  ('Dana','Howe','f','pl'),
+  ('Celeste','Merritt','nb','ar'),
+  ('Chancellor','Bolton','nb','ar'),
+  ('Jolene','Glover','m','pl'),
+  ('Brock','Buckner','m','pl'),
+  ('Adrian','Summers','f','ar'),
+  ('Madonna','Mendoza','f','ar'),
+  ('Quemby','Singleton','nb','pl'),
+  ('Blaze','Riley','nb','pl'),
+  ('Sophia','Molina','m','ar'),
+  ('Mohammad','Horne','m','ar'),
+  ('Vivien','Nicholson','f','pl'),
+  ('Honorato','Cotton','f','pl'),
+  ('Brenna','Sweet','nb','ar'),
+  ('Maxwell','Coleman','nb','ar'),
+  ('Steven','Shepherd','m','pl'),
+  ('Sylvia','Hays','m','pl'),
+  ('Dustin','Sweeney','f','ar'),
+  ('Willa','Trevino','f','ar'),
+  ('Ignatius','Garrison','nb','pl'),
+  ('Dennis','Ashley','nb','pl'),
+  ('Lillith','Bowers','m','ar'),
+  ('Freya','Haynes','m','ar'),
+  ('Ila','George','f','pl'),
+  ('Michelle','Page','f','pl'),
+  ('Bradley','Perez','nb','ar'),
+  ('Quinn','Hendricks','nb','ar'),
+  ('Alexis','Yates','m','pl'),
+  ('Tanek','Schmidt','m','pl'),
+  ('Allistair','Lott','f','ar'),
+  ('Orson','Chang','f','ar'),
+  ('Neve','Madden','nb','pl'),
+  ('Quynn','England','nb','pl'),
+  ('Karen','Mcfarland','m','ar'),
+  ('Priscilla','Fitzpatrick','m','ar'),
+  ('Aphrodite','Ballard','f','pl'),
+  ('Melyssa','Kirby','f','pl'),
+  ('Wyatt','Galloway','nb','ar'),
+  ('Wanda','Simmons','nb','ar'),
+  ('Rose','Carpenter','m','pl'),
+  ('Cyrus','Tillman','m','pl'),
+  ('Rina','Olsen','f','ar'),
+  ('Donovan','Ball','f','ar'),
+  ('Perry','Shelton','nb','pl'),
+  ('Ross','Moreno','nb','pl'),
+  ('Finn','Golden','m','ar'),
+  ('Gillian','Orr','m','ar'),
+  ('Brett','Wilkinson','f','pl'),
+  ('Orlando','Lane','f','pl'),
+  ('Wallace','Kennedy','nb','ar'),
+  ('Tobias','Pratt','nb','ar'),
+  ('Gavin','Cobb','m','pl'),
+  ('Pandora','Charles','m','pl'),
+  ('Aretha','Bishop','f','ar'),
+  ('Uma','Mcneil','f','ar'),
+  ('Rhoda','Noel','nb','pl'),
+  ('Aquila','Aguilar','nb','pl'),
+  ('Patience','Sheppard','m','ar'),
+  ('Indigo','Buckner','m','ar'),
+  ('Jorden','Nicholson','f','pl'),
+  ('Deanna','Sandoval','f','pl'),
+  ('Jack','Hebert','nb','ar'),
+  ('Timothy','Bush','nb','ar'),
+  ('Dominic','Blevins','m','pl'),
+  ('Thomas','Hodge','m','pl'),
+  ('Maris','Harrington','f','ar'),
+  ('Mechelle','Curtis','f','ar'),
+  ('Doris','Sutton','nb','pl'),
+  ('Lara','Branch','nb','pl'),
+  ('Harlan','Nelson','m','ar'),
+  ('Dennis','Pate','m','ar'),
+  ('Alfonso','Mcgowan','f','pl'),
+  ('Wylie','Mccall','f','pl'),
+  ('Louis','Michael','nb','ar'),
+  ('Chaney','Washington','nb','ar'),
+  ('Hilel','Dunlap','m','pl'),
+  ('Tamekah','Adams','m','pl'),
+  ('Cameron','Hansen','f','ar'),
+  ('Dora','Vinson','f','ar'),
+  ('Juliet','Mendez','nb','pl'),
+  ('Lani','Guzman','nb','pl'),
+  ('Nigel','Banks','m','ar'),
+  ('Kylan','Herman','m','ar'),
+  ('Lacy','Bell','f','pl'),
+  ('Carly','Horton','f','pl'),
+  ('Rose','Hicks','nb','ar'),
+  ('Jakeem','Preston','nb','ar'),
+  ('Barrett','Sims','m','pl'),
+  ('Heidi','Morrison','m','pl'),
+  ('Lacey','Bryan','f','ar'),
+  ('Alyssa','Dorsey','f','ar'),
+  ('Kaseem','Gonzalez','nb','pl'),
+  ('Nathaniel','Rios','nb','pl'),
+  ('August','Hancock','m','ar'),
+  ('Emerson','Chase','m','ar'),
+  ('Rashad','Ellis','f','pl'),
+  ('Kane','Lewis','f','pl'),
+  ('Pamela','Hess','nb','ar'),
+  ('Miriam','Bullock','nb','ar'),
+  ('Kyra','Garner','m','pl'),
+  ('Demetria','Curry','m','pl'),
+  ('Nichole','Everett','f','ar'),
+  ('Victor','Warner','f','ar'),
+  ('Darrel','Mitchell','nb','pl'),
+  ('Vance','Webster','nb','pl'),
+  ('Scott','Pitts','m','ar'),
+  ('Eliana','Fields','m','ar'),
+  ('Hadley','Bonner','f','pl'),
+  ('Christian','Yang','f','pl'),
+  ('Cherokee','Raymond','nb','ar'),
+  ('Kermit','Garrison','nb','ar'),
+  ('Eliana','Rosario','m','pl'),
+  ('Denton','Avery','m','pl'),
+  ('Adrian','Jones','f','ar'),
+  ('Quintessa','Peterson','f','ar'),
+  ('Thane','Nielsen','nb','pl'),
+  ('Lucius','Mitchell','nb','pl'),
+  ('Keaton','Kennedy','m','ar'),
+  ('Jena','Duffy','m','ar')
+;
+
+insert into lim (
+  lim_amount,
+  lim_country_code,
+  lim_tournament_id
+) values 
+  (50, 'pl', 1),
+  (50, 'ar', 1),
+  (80, 'pl', 2),
+  (80, 'ar', 2)
+;
+
+insert into participant (
+  participant_country_code,
+  participant_tournament_id,
+  participant_person_id
+) select 
+    person_nationality,
+    1,
+    person_id
+  from person
+  order by random()
+  limit 40
+;
+
+insert into participant (
+  participant_country_code,
+  participant_tournament_id,
+  participant_person_id
+) select 
+    person_nationality,
+    2,
+    person_id
+  from person
+  order by random()
+  limit 70
+;
 
 insert into auth(auth_pass) values (md5('xxx'));
 commit;
