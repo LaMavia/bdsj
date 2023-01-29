@@ -43,6 +43,45 @@ create or replace function score(
   end;
 $$ language plpgsql;
 
+create or replace function points_of_place(
+  in place integer
+) returns integer as $$
+  begin
+    case place 
+      when  1 then return 100; 
+      when  2 then return  80;  
+      when  3 then return  60;  
+      when  4 then return  50;  
+      when  5 then return  45;  
+      when  6 then return  40;  
+      when  7 then return  36;  
+      when  8 then return  32;  
+      when  9 then return  29;  
+      when 10 then return  26;  
+      when 11 then return  24;  
+      when 12 then return  22;  
+      when 13 then return  20;  
+      when 14 then return  18;  
+      when 15 then return  16;  
+      when 16 then return  15;
+      when 17 then return  14;
+      when 18 then return  13;
+      when 19 then return  12;
+      when 20 then return  11;
+      when 21 then return  10;
+      when 22 then return   9;
+      when 23 then return   8;
+      when 24 then return   7;
+      when 25 then return   6;
+      when 26 then return   5;
+      when 27 then return   4;
+      when 28 then return   3;
+      when 29 then return   2;
+      when 30 then return   1;
+      else         return   0;
+    end case;
+  end;
+$$ language plpgsql;
 
 create or replace function play_round(
   in in_round_id         integer,
@@ -214,7 +253,7 @@ create or replace function next_stage(
       from participant 
       where participant_tournament_id = in_tournament_id;
 
-    if current_stage < 3 then
+    if current_stage < 4 then
       raise notice 'Inserting new round'; 
       insert into round(round_date) values (current_date)
         returning round_id into new_round_id;
@@ -286,11 +325,11 @@ create or replace function next_stage(
         ) from position 
           where position_round_id = new_round_id
         ;
-    else 
+    elsif current_stage = 2 then
     -- play the second round
       update tournament 
         set 
-          tournament_round_first_id = new_round_id,
+          tournament_round_second_id = new_round_id,
           tournament_stage = 3
         where tournament_id = in_tournament_id
         ;
@@ -312,6 +351,37 @@ create or replace function next_stage(
           position_participant_id 
       ) from position 
         where position_round_id = new_round_id
+      ;
+    elsif current_stage = 3 then
+    -- end the tournament
+      update tournament 
+        set 
+          tournament_round_first_id = new_round_id,
+          tournament_stage = 4
+        where tournament_id = in_tournament_id
+        ;
+      
+      raise notice 'Summing up the second major round %', last_round_id;
+      perform sum_up_round(last_round_id);
+
+      raise notice 'Assigning worldcup points';
+      with points as (
+        select 
+          position_participant_id score_participant_id,
+          points_of_place(
+            position_final
+          ) score_points
+        from position
+        inner join participant 
+          on ( 
+            participant_id = position_participant_id
+          )
+        where position_round_id = last_round_id
+          -- and participant_tournament_id = in_tournament_id
+      ) update person
+        set person_points = person_points + score_points
+        from points
+        where score_participant_id = person_id  
       ;
     end if;
   end;

@@ -48,7 +48,8 @@ create table if not exists person (
     person_last_name varchar(255) not null check (length(person_last_name) > 0),
     person_gender varchar(2) not null check (person_gender in ('m', 'f', 'nb', 'na', 'gf', 'db', 'dg', 'ag')),
     person_nationality char(2) not null 
-        references country (country_code)
+        references country (country_code),
+    person_points integer default 0 not null
 );
 
 create table if not exists participant (

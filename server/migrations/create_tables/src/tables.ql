@@ -39,7 +39,8 @@ create table? person (
     @_first_name varchar(255)! check (length(@_first_name) > 0),
     @_last_name varchar(255)! check (length(@_last_name) > 0),
     @_gender varchar(2)! check (@_gender in ('m', 'f', 'nb', 'na', 'gf', 'db', 'dg', 'ag')),
-    @_nationality char(2)! -> country_code
+    @_nationality char(2)! -> country_code,
+    @_points integer default 0!
 );
 
 create table? participant (
