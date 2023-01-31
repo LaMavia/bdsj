@@ -47,8 +47,7 @@ export const PersonsRoute = () => {
         { key: 'score', align: 'right', display: 'Punkty', default: '0' },
       ]}
       data={entries}
-      key_func={e => e.participant_id}
-      onChange={() => {}}
+      key_func={e => String(e.participant_id)}
       onDelete={_ => {}}>
       <Typography variant="h4">Wyniki rundy</Typography>
     </ListView>

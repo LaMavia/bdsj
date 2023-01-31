@@ -1,6 +1,7 @@
 use crate::{
     api_response::ApiResponse,
     database::Database,
+    funcs::auth::auth_session_from_cookies,
     router::{ApiRoute, Method, RouteContext},
 };
 use async_trait::async_trait;
@@ -25,6 +26,9 @@ impl ApiRoute for Route {
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
         let db = Database::connect().await?;
+        if let Err(res) = auth_session_from_cookies(&db, ctx).await {
+            return res;
+        }
 
         let req: Body = serde_json::from_str(&ctx.body).map_err(|e| {
             format!(

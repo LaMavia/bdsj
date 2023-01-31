@@ -1,4 +1,7 @@
 import {
+  Button,
+  ButtonGroup,
+  FormGroup,
   Grid,
   Paper,
   Table,
@@ -7,33 +10,80 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material'
 import { Box, Container } from '@mui/system'
-import { PropsWithChildren } from 'react'
+import { PropsWithChildren, ReactElement, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { isAuth } from '../state/global'
 
-export type ListViewParams<T, K> = {
-  schema: {
-    key: keyof T
-    align: 'left' | 'right'
-    display: string
-    default?: string
-    alt?: keyof T
-  }[]
+export type FieldSchema<T> = {
+  key: keyof T
+  align: 'left' | 'right'
+  display: string
+  default?: string
+  alt?: keyof T
+  onlyEdit?: boolean
+  deserialize?: (x: string) => any
+  render?: (x: any) => JSX.Element
+}
+
+export type ListViewParams<T> = {
+  schema: FieldSchema<T>[]
   data: T[]
-  key_func: (entry: T) => K
-  onDelete: (key: K) => void
-  onChange: () => void
+  key_func: (entry: T) => string
+  onDelete: (key: string) => void
+  onCommit?: (changedRows: T[]) => Promise<void>
 }
 
 export function ListView<T, K>({
   schema,
   data,
   key_func,
-  onDelete,
-  onChange,
+  onCommit,
   children,
-}: PropsWithChildren<ListViewParams<T, K>>) {
+}: PropsWithChildren<ListViewParams<T>>) {
+  const auth = isAuth()
+  const navigate = useNavigate()
+  const [edit, setEdit] = useState(false)
+  const [changedRows, setChangedRows] = useState<{
+    [key: string]: { [P in keyof T]?: string | T[P] }
+  }>({})
+
+  const onChange = (row: T, field: FieldSchema<T>, val: string) => {
+    if (!field.deserialize) return
+
+    const key = key_func(row)
+    const mod_row = key in changedRows ? changedRows[key] : { ...row }
+    mod_row[field.key] = val
+
+    setChangedRows({ [key]: mod_row, ...changedRows })
+    console.dir(changedRows)
+  }
+
+  const handleCommit = () => {
+    if (!onCommit) return
+
+    const lookup = schema.reduce(
+      (u, s) => (s.deserialize ? { [s.key]: s.deserialize, ...u } : u),
+      {} as { [P in keyof T]: (x: string) => T[P] },
+    )
+
+    setEdit(false)
+    onCommit(
+      Object.values(changedRows).map(row => {
+        for (const k in row) {
+          if (k in lookup && typeof row[k] === 'string') {
+            row[k] = lookup[k](row[k] as string)
+          }
+        }
+
+        return row as T
+      }),
+    ).then(() => setChangedRows({}))
+  }
+
   return (
     <>
       <Box
@@ -48,38 +98,90 @@ export function ListView<T, K>({
           <Container
             sx={{
               maxWidth: '926px',
-              width: '50vw',
-              minWidth: '826px',
+              width: '70vw',
+              minWidth: '926px',
             }}>
-            <Paper>
-              {children}
+            <Paper
+              sx={{ padding: '1rem', marginBottom: '0.5rem' }}
+              elevation={3}>
+              <FormGroup
+                sx={{ justifyContent: 'space-between', flexFlow: 'row' }}>
+                {children}
+                <ButtonGroup>
+                  <Button onClick={_ => navigate(-1)}>
+                    Wróć
+                  </Button>
+                  {auth && (
+                    <>
+                      <Button
+                        onClick={_ => setEdit(!edit)}
+                        color={!edit ? 'primary' : 'error'}>
+                        {!edit ? 'Edytuj' : 'Anuluj'}
+                      </Button>
+                      {edit && (
+                        <Button color="primary" onClick={handleCommit}>
+                          Zapisz
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </ButtonGroup>
+              </FormGroup>
             </Paper>
             <TableContainer
               component={Paper}
               elevation={2}
               sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
-              <Table sx={{ minWidth: 650 }} aria-label="simple table">
+              <Table sx={{ minWidth: 750 }} aria-label="simple table">
                 <TableHead>
                   <TableRow>
-                    {schema.map(({ align, display }) => (
-                      <TableCell align={align}>{display}</TableCell>
-                    ))}
+                    {schema.map(
+                      s =>
+                        (!s.onlyEdit || (s.onlyEdit && edit)) && (
+                          <TableCell align={s.align}>{s.display}</TableCell>
+                        ),
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {data.map(row => (
                     <TableRow key={`${key_func(row)}`}>
-                      {schema.map(({ align, key, display, ...s }) => (
-                        <TableCell align={align}>
-                          {`${
-                            row[key] === undefined || row[key] === null
-                              ? 'alt' in s
-                                ? `${s?.default}:${row[s.alt as keyof T]}`
-                                : s?.default
-                              : row[key]
-                          }`}
-                        </TableCell>
-                      ))}
+                      {schema.map(s =>
+                        s.deserialize && edit ? (
+                          <TableCell
+                            key={`${String(s.key)}+${key_func(row)}`}
+                            align={s.align}>
+                            <TextField
+                              value={
+                                (key_func(row) in changedRows
+                                  ? changedRows[key_func(row)][s.key]
+                                  : row[s.key]) || ''
+                              }
+                              onChange={e => {
+                                e.preventDefault()
+                                onChange(row, s, e.target.value)
+                              }}
+                            />
+                          </TableCell>
+                        ) : !s.onlyEdit ? (
+                          <TableCell
+                            key={`${String(s.key)}+${key_func(row)}`}
+                            align={s.align}>
+                            {s.render
+                              ? s.render(row[s.key])
+                              : `${
+                                  row[s.key] === undefined ||
+                                  row[s.key] === null
+                                    ? 'alt' in s
+                                      ? `${s?.default}:${row[s.alt as keyof T]}`
+                                      : s?.default
+                                    : row[s.key]
+                                }`}
+                          </TableCell>
+                        ) : (
+                          <></>
+                        ),
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

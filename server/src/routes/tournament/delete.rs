@@ -26,7 +26,6 @@ impl ApiRoute for DeleteRoute {
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
         let db = Database::connect().await?;
-
         if let Err(res) = auth_session_from_cookies(&db, ctx).await {
             return res;
         }
@@ -37,11 +36,21 @@ impl ApiRoute for DeleteRoute {
                 ctx.body
             )
         })?;
+        let mut tx = db.connection.begin().await.map_err(|e| e.to_string())?;
 
-        let result = sqlx::query!("delete from tournament where tournament_id = $1", params.id)
-            .execute(&db.connection)
+        sqlx::query("select pre_round_dependant_delete();")
+            .execute(&mut tx)
             .await
             .map_err(|e| e.to_string())?;
+        let result = sqlx::query!("delete from tournament where tournament_id = $1", params.id)
+            .execute(&mut tx)
+            .await
+            .map_err(|e| e.to_string())?;
+        sqlx::query("select post_round_dependant_delete();")
+            .execute(&mut tx)
+            .await
+            .map_err(|e| e.to_string())?;
+        tx.commit().await.map_err(|e| e.to_string())?;
 
         ApiResponse::<_>::ok(
             &ctx.headers,

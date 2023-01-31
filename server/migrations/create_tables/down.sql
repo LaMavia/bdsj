@@ -22,4 +22,11 @@ drop trigger if exists check_tournament_location_trigger
   on tournament 
   cascade;
 
+drop trigger if exists round_exclusion_jump_trigger
+  on jump 
+  cascade;
+drop trigger if exists round_exclusion_dis_trigger
+  on disqualification 
+  cascade;
+
 commit;

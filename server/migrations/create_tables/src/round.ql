@@ -39,7 +39,11 @@ create or replace function score(
         and jump_round_id = in_round_id
     ;
 
-    return score;
+    if score is null then 
+      return 0;
+    else 
+      return score;
+    end if;
   end;
 $$ language plpgsql;
 
@@ -178,7 +182,7 @@ create or replace function sum_up_round(
           score(
             position_participant_id, 
             position_round_id
-          )) new_final
+          ) desc) new_final
       from position 
       where position_round_id = last_round_id
     ) update position 

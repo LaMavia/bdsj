@@ -8,6 +8,7 @@ create table if not exists sess (
     sess_expires_at timestamp,
     sess_auth_id integer not null 
         references auth (auth_id)
+        on delete cascade
 );
 
 create or replace function authenticate(in session_id text, in duration interval) 

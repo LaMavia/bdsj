@@ -23,6 +23,7 @@ create table if not exists location (
     location_city varchar(255) not null check (length(location_city) > 0),
     location_country_code char(2) not null 
         references country (country_code)
+        on delete cascade
 );
 
 create table if not exists tournament (
@@ -30,24 +31,31 @@ create table if not exists tournament (
     tournament_name varchar(255) not null check (length(tournament_name) > 0),
     tournament_year integer not null,
     tournament_location_id integer not null 
-        references location (location_id),
+        references location (location_id)
+        on delete cascade,
     tournament_stage integer default 0 not null,
     tournament_host char(2) not null 
-        references country (country_code),
+        references country (country_code)
+        on delete cascade,
     tournament_round_qualifier_id integer 
-        references round (round_id),
+        references round (round_id)
+        on delete cascade,
     tournament_round_first_id integer 
-        references round (round_id),
+        references round (round_id)
+        on delete cascade,
     tournament_round_second_id integer 
         references round (round_id)
+        on delete cascade
 );
 
 create table if not exists lim (
     lim_amount integer default 2 not null check (lim_amount > 0),
     lim_country_code char(2) not null 
-        references country (country_code),
+        references country (country_code)
+        on delete cascade,
     lim_tournament_id integer not null 
-        references tournament (tournament_id),
+        references tournament (tournament_id)
+        on delete cascade,
     primary key (lim_country_code, lim_tournament_id)
 );
 
@@ -57,26 +65,32 @@ create table if not exists person (
     person_last_name varchar(255) not null check (length(person_last_name) > 0),
     person_gender varchar(2) not null check (person_gender in ('m', 'f', 'nb', 'na', 'gf', 'db', 'dg', 'ag')),
     person_nationality char(2) not null 
-        references country (country_code),
+        references country (country_code)
+        on delete cascade,
     person_points integer default 0 not null
 );
 
 create table if not exists participant (
     participant_id serial primary key,
     participant_country_code char(2) not null 
-        references country (country_code),
+        references country (country_code)
+        on delete cascade,
     participant_tournament_id integer not null 
-        references tournament (tournament_id),
+        references tournament (tournament_id)
+        on delete cascade,
     participant_person_id integer not null 
-        references person (person_id),
+        references person (person_id)
+        on delete cascade,
     unique (participant_tournament_id, participant_person_id)
 );
 
 create table if not exists position (
     position_participant_id integer not null 
-        references participant (participant_id),
+        references participant (participant_id)
+        on delete cascade,
     position_round_id integer not null 
-        references round (round_id),
+        references round (round_id)
+        on delete cascade,
     position_initial integer not null,
     position_final integer,
     primary key (position_participant_id, position_round_id)
@@ -84,9 +98,11 @@ create table if not exists position (
 
 create table if not exists jump (
     jump_participant_id integer not null 
-        references participant (participant_id),
+        references participant (participant_id)
+        on delete cascade,
     jump_round_id integer not null 
-        references round (round_id),
+        references round (round_id)
+        on delete cascade,
     jump_score float not null,
     jump_distance float not null,
     primary key (jump_participant_id, jump_round_id)
@@ -94,9 +110,11 @@ create table if not exists jump (
 
 create table if not exists disqualification (
     disqualification_participant_id integer not null 
-        references participant (participant_id),
+        references participant (participant_id)
+        on delete cascade,
     disqualification_round_id integer not null 
-        references round (round_id),
+        references round (round_id)
+        on delete cascade,
     disqualification_reason text not null,
     primary key (disqualification_participant_id, disqualification_round_id)
 );
@@ -111,6 +129,7 @@ create table if not exists sess (
     sess_expires_at timestamp,
     sess_auth_id integer not null 
         references auth (auth_id)
+        on delete cascade
 );
 
 create or replace function authenticate(in session_id text, in duration interval) 
@@ -197,7 +216,11 @@ create or replace function score(
         and jump_round_id = in_round_id
     ;
 
-    return score;
+    if score is null then 
+      return 0;
+    else 
+      return score;
+    end if;
   end;
 $$ language plpgsql;
 
@@ -336,7 +359,7 @@ create or replace function sum_up_round(
           score(
             position_participant_id, 
             position_round_id
-          )) new_final
+          ) desc) new_final
       from position 
       where position_round_id = last_round_id
     ) update position 
@@ -613,8 +636,138 @@ create trigger check_tournament_location_trigger
   before insert or update
   on tournament
   for each row
-  execute procedure check_tournament_location();
+  execute procedure check_tournament_location()
+;
 
+create or replace function round_exclusion_jump_check() 
+returns trigger as $$
+  declare
+    e_dis boolean;
+  begin
+    -- check if disqualification exists
+    select exists (
+      select * 
+      from disqualification 
+      where disqualification_participant_id = NEW.jump_participant_id
+        and disqualification_round_id       = NEW.jump_round_id
+    ) A into e_dis;
+
+    if e_dis then 
+      raise exception 'Rekord rundy może zawierać jedynie skok (jump) lub dyskwalifikację (disqualification)';
+    end if;
+
+    return NEW;
+  end;
+$$ language plpgsql;
+
+create trigger round_exclusion_jump_trigger
+  before insert 
+  on jump 
+  for each row
+  execute procedure round_exclusion_jump_check()
+;
+
+
+
+create or replace function round_exclusion_dis_check() 
+returns trigger as $$
+  declare
+    e_jump boolean;
+  begin
+    -- check if the jump exists
+    select exists (
+      select * 
+      from jump 
+      where jump.jump_participant_id = NEW.disqualification_participant_id
+        and jump.jump_round_id       = NEW.disqualification_round_id
+    ) A into e_jump;
+
+    if e_jump then 
+      raise exception 'Rekord rundy może zawierać jedynie skok (jump) lub dyskwalifikację (disqualification)';
+    end if;
+
+    return NEW;
+  end;
+$$ language plpgsql;
+
+create trigger round_exclusion_dis_trigger
+  before insert 
+  on disqualification 
+  for each row
+  execute procedure round_exclusion_dis_check()
+;
+
+create or replace function round_existence_dis_check() 
+returns trigger as $$
+  declare
+    e_jump boolean;
+  begin
+    -- check if the jump exists
+    select exists (
+      select * 
+      from jump 
+      where jump.jump_participant_id = OLD.disqualification_participant_id
+        and jump.jump_round_id       = OLD.disqualification_round_id
+    ) A into e_jump;
+
+    if not e_jump then 
+      raise exception 'Rekord musi zawierać skok (jump) lub dyskwalifikację (disqualification)';
+    end if;
+
+    return NEW;
+  end;
+$$ language plpgsql;
+
+create trigger round_existence_dis_trigger
+  before delete 
+  on disqualification 
+  for each row
+  execute procedure round_existence_dis_check()
+;
+
+create or replace function round_existence_jump_check() 
+returns trigger as $$
+  declare
+    e_dis boolean;
+  begin
+    -- check if the jump exists
+    select exists (
+      select * 
+      from disqualification 
+      where disqualification_participant_id = OLD.jump_participant_id
+        and disqualification_round_id       = OLD.jump_round_id
+    ) A into e_dis;
+
+    if not e_dis then 
+      raise exception 'Rekord musi zawierać skok (jump) lub dyskwalifikację (disqualification)';
+    end if;
+
+    return NEW;
+  end;
+$$ language plpgsql;
+
+create trigger round_existence_jump_trigger
+  before delete 
+  on jump
+  for each row
+  execute procedure round_existence_jump_check()
+;
+
+create or replace function pre_round_dependant_delete() 
+returns void as $$
+  begin
+    alter table jump disable trigger round_existence_jump_trigger;
+    alter table disqualification disable trigger round_exclusion_dis_trigger;
+  end;
+$$ language plpgsql;
+
+create or replace function post_round_dependant_delete() 
+returns void as $$
+  begin
+    alter table jump enable trigger round_existence_jump_trigger;
+    alter table disqualification enable trigger round_exclusion_dis_trigger;
+  end;
+$$ language plpgsql;
 
 insert into country (
   country_name, 
@@ -646,207 +799,7 @@ insert into person (
   person_last_name,
   person_gender,
   person_nationality
-) values
-  ('Avye','Snyder','m','pl'),
-  ('Gil','Reynolds','m','pl'),
-  ('Bertha','Lara','f','ar'),
-  ('Neil','Petty','f','ar'),
-  ('Axel','Brooks','nb','pl'),
-  ('Lionel','Cain','nb','pl'),
-  ('Alexis','Bonner','m','ar'),
-  ('Yardley','Meyer','m','ar'),
-  ('Salvador','Webster','f','pl'),
-  ('Emily','Hernandez','f','pl'),
-  ('Dexter','Walton','nb','ar'),
-  ('Whoopi','Mccoy','nb','ar'),
-  ('Candace','Ross','m','pl'),
-  ('Oscar','Hood','m','pl'),
-  ('Jordan','Stuart','f','ar'),
-  ('Frances','Benson','f','ar'),
-  ('Drew','Santana','nb','pl'),
-  ('Madeline','Burch','nb','pl'),
-  ('Hop','Bullock','m','ar'),
-  ('Moses','Weiss','m','ar'),
-  ('Dean','Dawson','f','pl'),
-  ('Kenneth','Hamilton','f','pl'),
-  ('Grace','Crawford','nb','ar'),
-  ('Garrett','Finch','nb','ar'),
-  ('Shellie','Parks','m','pl'),
-  ('Harlan','Blackwell','m','pl'),
-  ('Melodie','Whitley','f','ar'),
-  ('Merritt','King','f','ar'),
-  ('Noelani','Wade','nb','pl'),
-  ('Patience','Alvarez','nb','pl'),
-  ('Vivien','England','m','ar'),
-  ('Gray','Cantu','m','ar'),
-  ('Zachary','Andrews','f','pl'),
-  ('Wynter','Velazquez','f','pl'),
-  ('Christopher','Henson','nb','ar'),
-  ('Rooney','Delacruz','nb','ar'),
-  ('Vielka','Sampson','m','pl'),
-  ('Helen','Daniels','m','pl'),
-  ('Lance','Mcclure','f','ar'),
-  ('Lyle','Fry','f','ar'),
-  ('Amir','Drake','nb','pl'),
-  ('Camille','Clayton','nb','pl'),
-  ('Dalton','Meyer','m','ar'),
-  ('Burton','Sharpe','m','ar'),
-  ('Leo','Tate','f','pl'),
-  ('Colin','Travis','f','pl'),
-  ('Channing','Jimenez','nb','ar'),
-  ('Christine','Figueroa','nb','ar'),
-  ('Laurel','Whitaker','m','pl'),
-  ('Henry','Wallace','m','pl'),
-  ('Aidan','Hodges','f','ar'),
-  ('Margaret','Meadows','f','ar'),
-  ('Germane','Kim','nb','pl'),
-  ('Xanthus','Dalton','nb','pl'),
-  ('Hamilton','Oconnor','m','ar'),
-  ('Kelly','Johns','m','ar'),
-  ('Honorato','Howard','f','pl'),
-  ('Kylan','Palmer','f','pl'),
-  ('Sheila','Bradley','nb','ar'),
-  ('Rooney','Foster','nb','ar'),
-  ('Maryam','Ingram','m','pl'),
-  ('Gretchen','Mckinney','m','pl'),
-  ('Elliott','Graham','f','ar'),
-  ('Tashya','Holland','f','ar'),
-  ('Riley','Phillips','nb','pl'),
-  ('Buckminster','Holden','nb','pl'),
-  ('Ila','Campos','m','ar'),
-  ('Cain','Evans','m','ar'),
-  ('Nehru','Dudley','f','pl'),
-  ('Chancellor','Ballard','f','pl'),
-  ('Rachel','Mcgee','nb','ar'),
-  ('Shelly','Brooks','nb','ar'),
-  ('Demetria','Rosario','m','pl'),
-  ('Violet','Barr','m','pl'),
-  ('Xena','Barron','f','ar'),
-  ('Daniel','Cox','f','ar'),
-  ('Kennan','Carter','nb','pl'),
-  ('Cameron','Adkins','nb','pl'),
-  ('Chancellor','Young','m','ar'),
-  ('Barry','Shepherd','m','ar'),
-  ('Kasimir','Mcintyre','f','pl'),
-  ('Dana','Howe','f','pl'),
-  ('Celeste','Merritt','nb','ar'),
-  ('Chancellor','Bolton','nb','ar'),
-  ('Jolene','Glover','m','pl'),
-  ('Brock','Buckner','m','pl'),
-  ('Adrian','Summers','f','ar'),
-  ('Madonna','Mendoza','f','ar'),
-  ('Quemby','Singleton','nb','pl'),
-  ('Blaze','Riley','nb','pl'),
-  ('Sophia','Molina','m','ar'),
-  ('Mohammad','Horne','m','ar'),
-  ('Vivien','Nicholson','f','pl'),
-  ('Honorato','Cotton','f','pl'),
-  ('Brenna','Sweet','nb','ar'),
-  ('Maxwell','Coleman','nb','ar'),
-  ('Steven','Shepherd','m','pl'),
-  ('Sylvia','Hays','m','pl'),
-  ('Dustin','Sweeney','f','ar'),
-  ('Willa','Trevino','f','ar'),
-  ('Ignatius','Garrison','nb','pl'),
-  ('Dennis','Ashley','nb','pl'),
-  ('Lillith','Bowers','m','ar'),
-  ('Freya','Haynes','m','ar'),
-  ('Ila','George','f','pl'),
-  ('Michelle','Page','f','pl'),
-  ('Bradley','Perez','nb','ar'),
-  ('Quinn','Hendricks','nb','ar'),
-  ('Alexis','Yates','m','pl'),
-  ('Tanek','Schmidt','m','pl'),
-  ('Allistair','Lott','f','ar'),
-  ('Orson','Chang','f','ar'),
-  ('Neve','Madden','nb','pl'),
-  ('Quynn','England','nb','pl'),
-  ('Karen','Mcfarland','m','ar'),
-  ('Priscilla','Fitzpatrick','m','ar'),
-  ('Aphrodite','Ballard','f','pl'),
-  ('Melyssa','Kirby','f','pl'),
-  ('Wyatt','Galloway','nb','ar'),
-  ('Wanda','Simmons','nb','ar'),
-  ('Rose','Carpenter','m','pl'),
-  ('Cyrus','Tillman','m','pl'),
-  ('Rina','Olsen','f','ar'),
-  ('Donovan','Ball','f','ar'),
-  ('Perry','Shelton','nb','pl'),
-  ('Ross','Moreno','nb','pl'),
-  ('Finn','Golden','m','ar'),
-  ('Gillian','Orr','m','ar'),
-  ('Brett','Wilkinson','f','pl'),
-  ('Orlando','Lane','f','pl'),
-  ('Wallace','Kennedy','nb','ar'),
-  ('Tobias','Pratt','nb','ar'),
-  ('Gavin','Cobb','m','pl'),
-  ('Pandora','Charles','m','pl'),
-  ('Aretha','Bishop','f','ar'),
-  ('Uma','Mcneil','f','ar'),
-  ('Rhoda','Noel','nb','pl'),
-  ('Aquila','Aguilar','nb','pl'),
-  ('Patience','Sheppard','m','ar'),
-  ('Indigo','Buckner','m','ar'),
-  ('Jorden','Nicholson','f','pl'),
-  ('Deanna','Sandoval','f','pl'),
-  ('Jack','Hebert','nb','ar'),
-  ('Timothy','Bush','nb','ar'),
-  ('Dominic','Blevins','m','pl'),
-  ('Thomas','Hodge','m','pl'),
-  ('Maris','Harrington','f','ar'),
-  ('Mechelle','Curtis','f','ar'),
-  ('Doris','Sutton','nb','pl'),
-  ('Lara','Branch','nb','pl'),
-  ('Harlan','Nelson','m','ar'),
-  ('Dennis','Pate','m','ar'),
-  ('Alfonso','Mcgowan','f','pl'),
-  ('Wylie','Mccall','f','pl'),
-  ('Louis','Michael','nb','ar'),
-  ('Chaney','Washington','nb','ar'),
-  ('Hilel','Dunlap','m','pl'),
-  ('Tamekah','Adams','m','pl'),
-  ('Cameron','Hansen','f','ar'),
-  ('Dora','Vinson','f','ar'),
-  ('Juliet','Mendez','nb','pl'),
-  ('Lani','Guzman','nb','pl'),
-  ('Nigel','Banks','m','ar'),
-  ('Kylan','Herman','m','ar'),
-  ('Lacy','Bell','f','pl'),
-  ('Carly','Horton','f','pl'),
-  ('Rose','Hicks','nb','ar'),
-  ('Jakeem','Preston','nb','ar'),
-  ('Barrett','Sims','m','pl'),
-  ('Heidi','Morrison','m','pl'),
-  ('Lacey','Bryan','f','ar'),
-  ('Alyssa','Dorsey','f','ar'),
-  ('Kaseem','Gonzalez','nb','pl'),
-  ('Nathaniel','Rios','nb','pl'),
-  ('August','Hancock','m','ar'),
-  ('Emerson','Chase','m','ar'),
-  ('Rashad','Ellis','f','pl'),
-  ('Kane','Lewis','f','pl'),
-  ('Pamela','Hess','nb','ar'),
-  ('Miriam','Bullock','nb','ar'),
-  ('Kyra','Garner','m','pl'),
-  ('Demetria','Curry','m','pl'),
-  ('Nichole','Everett','f','ar'),
-  ('Victor','Warner','f','ar'),
-  ('Darrel','Mitchell','nb','pl'),
-  ('Vance','Webster','nb','pl'),
-  ('Scott','Pitts','m','ar'),
-  ('Eliana','Fields','m','ar'),
-  ('Hadley','Bonner','f','pl'),
-  ('Christian','Yang','f','pl'),
-  ('Cherokee','Raymond','nb','ar'),
-  ('Kermit','Garrison','nb','ar'),
-  ('Eliana','Rosario','m','pl'),
-  ('Denton','Avery','m','pl'),
-  ('Adrian','Jones','f','ar'),
-  ('Quintessa','Peterson','f','ar'),
-  ('Thane','Nielsen','nb','pl'),
-  ('Lucius','Mitchell','nb','pl'),
-  ('Keaton','Kennedy','m','ar'),
-  ('Jena','Duffy','m','ar')
+) values ('Avye','Snyder','m','pl'), ('Gil','Reynolds','m','pl'), ('Bertha','Lara','f','ar'), ('Neil','Petty','f','ar'), ('Axel','Brooks','nb','pl'), ('Lionel','Cain','nb','pl'), ('Alexis','Bonner','m','ar'), ('Yardley','Meyer','m','ar'), ('Salvador','Webster','f','pl'), ('Emily','Hernandez','f','pl'), ('Dexter','Walton','nb','ar'), ('Whoopi','Mccoy','nb','ar'), ('Candace','Ross','m','pl'), ('Oscar','Hood','m','pl'), ('Jordan','Stuart','f','ar'), ('Frances','Benson','f','ar'), ('Drew','Santana','nb','pl'), ('Madeline','Burch','nb','pl'), ('Hop','Bullock','m','ar'), ('Moses','Weiss','m','ar'), ('Dean','Dawson','f','pl'), ('Kenneth','Hamilton','f','pl'), ('Grace','Crawford','nb','ar'), ('Garrett','Finch','nb','ar'), ('Shellie','Parks','m','pl'), ('Harlan','Blackwell','m','pl'), ('Melodie','Whitley','f','ar'), ('Merritt','King','f','ar'), ('Noelani','Wade','nb','pl'), ('Patience','Alvarez','nb','pl'), ('Vivien','England','m','ar'), ('Gray','Cantu','m','ar'), ('Zachary','Andrews','f','pl'), ('Wynter','Velazquez','f','pl'), ('Christopher','Henson','nb','ar'), ('Rooney','Delacruz','nb','ar'), ('Vielka','Sampson','m','pl'), ('Helen','Daniels','m','pl'), ('Lance','Mcclure','f','ar'), ('Lyle','Fry','f','ar'), ('Amir','Drake','nb','pl'), ('Camille','Clayton','nb','pl'), ('Dalton','Meyer','m','ar'), ('Burton','Sharpe','m','ar'), ('Leo','Tate','f','pl'), ('Colin','Travis','f','pl'), ('Channing','Jimenez','nb','ar'), ('Christine','Figueroa','nb','ar'), ('Laurel','Whitaker','m','pl'), ('Henry','Wallace','m','pl'), ('Aidan','Hodges','f','ar'), ('Margaret','Meadows','f','ar'), ('Germane','Kim','nb','pl'), ('Xanthus','Dalton','nb','pl'), ('Hamilton','Oconnor','m','ar'), ('Kelly','Johns','m','ar'), ('Honorato','Howard','f','pl'), ('Kylan','Palmer','f','pl'), ('Sheila','Bradley','nb','ar'), ('Rooney','Foster','nb','ar'), ('Maryam','Ingram','m','pl'), ('Gretchen','Mckinney','m','pl'), ('Elliott','Graham','f','ar'), ('Tashya','Holland','f','ar'), ('Riley','Phillips','nb','pl'), ('Buckminster','Holden','nb','pl'), ('Ila','Campos','m','ar'), ('Cain','Evans','m','ar'), ('Nehru','Dudley','f','pl'), ('Chancellor','Ballard','f','pl'), ('Rachel','Mcgee','nb','ar'), ('Shelly','Brooks','nb','ar'), ('Demetria','Rosario','m','pl'), ('Violet','Barr','m','pl'), ('Xena','Barron','f','ar'), ('Daniel','Cox','f','ar'), ('Kennan','Carter','nb','pl'), ('Cameron','Adkins','nb','pl'), ('Chancellor','Young','m','ar'), ('Barry','Shepherd','m','ar'), ('Kasimir','Mcintyre','f','pl'), ('Dana','Howe','f','pl'), ('Celeste','Merritt','nb','ar'), ('Chancellor','Bolton','nb','ar'), ('Jolene','Glover','m','pl'), ('Brock','Buckner','m','pl'), ('Adrian','Summers','f','ar'), ('Madonna','Mendoza','f','ar'), ('Quemby','Singleton','nb','pl'), ('Blaze','Riley','nb','pl'), ('Sophia','Molina','m','ar'), ('Mohammad','Horne','m','ar'), ('Vivien','Nicholson','f','pl'), ('Honorato','Cotton','f','pl'), ('Brenna','Sweet','nb','ar'), ('Maxwell','Coleman','nb','ar'), ('Steven','Shepherd','m','pl'), ('Sylvia','Hays','m','pl'), ('Dustin','Sweeney','f','ar'), ('Willa','Trevino','f','ar'), ('Ignatius','Garrison','nb','pl'), ('Dennis','Ashley','nb','pl'), ('Lillith','Bowers','m','ar'), ('Freya','Haynes','m','ar'), ('Ila','George','f','pl'), ('Michelle','Page','f','pl'), ('Bradley','Perez','nb','ar'), ('Quinn','Hendricks','nb','ar'), ('Alexis','Yates','m','pl'), ('Tanek','Schmidt','m','pl'), ('Allistair','Lott','f','ar'), ('Orson','Chang','f','ar'), ('Neve','Madden','nb','pl'), ('Quynn','England','nb','pl'), ('Karen','Mcfarland','m','ar'), ('Priscilla','Fitzpatrick','m','ar'), ('Aphrodite','Ballard','f','pl'), ('Melyssa','Kirby','f','pl'), ('Wyatt','Galloway','nb','ar'), ('Wanda','Simmons','nb','ar'), ('Rose','Carpenter','m','pl'), ('Cyrus','Tillman','m','pl'), ('Rina','Olsen','f','ar'), ('Donovan','Ball','f','ar'), ('Perry','Shelton','nb','pl'), ('Ross','Moreno','nb','pl'), ('Finn','Golden','m','ar'), ('Gillian','Orr','m','ar'), ('Brett','Wilkinson','f','pl'), ('Orlando','Lane','f','pl'), ('Wallace','Kennedy','nb','ar'), ('Tobias','Pratt','nb','ar'), ('Gavin','Cobb','m','pl'), ('Pandora','Charles','m','pl'), ('Aretha','Bishop','f','ar'), ('Uma','Mcneil','f','ar'), ('Rhoda','Noel','nb','pl'), ('Aquila','Aguilar','nb','pl'), ('Patience','Sheppard','m','ar'), ('Indigo','Buckner','m','ar'), ('Jorden','Nicholson','f','pl'), ('Deanna','Sandoval','f','pl'), ('Jack','Hebert','nb','ar'), ('Timothy','Bush','nb','ar'), ('Dominic','Blevins','m','pl'), ('Thomas','Hodge','m','pl'), ('Maris','Harrington','f','ar'), ('Mechelle','Curtis','f','ar'), ('Doris','Sutton','nb','pl'), ('Lara','Branch','nb','pl'), ('Harlan','Nelson','m','ar'), ('Dennis','Pate','m','ar'), ('Alfonso','Mcgowan','f','pl'), ('Wylie','Mccall','f','pl'), ('Louis','Michael','nb','ar'), ('Chaney','Washington','nb','ar'), ('Hilel','Dunlap','m','pl'), ('Tamekah','Adams','m','pl'), ('Cameron','Hansen','f','ar'), ('Dora','Vinson','f','ar'), ('Juliet','Mendez','nb','pl'), ('Lani','Guzman','nb','pl'), ('Nigel','Banks','m','ar'), ('Kylan','Herman','m','ar'), ('Lacy','Bell','f','pl'), ('Carly','Horton','f','pl'), ('Rose','Hicks','nb','ar'), ('Jakeem','Preston','nb','ar'), ('Barrett','Sims','m','pl'), ('Heidi','Morrison','m','pl'), ('Lacey','Bryan','f','ar'), ('Alyssa','Dorsey','f','ar'), ('Kaseem','Gonzalez','nb','pl'), ('Nathaniel','Rios','nb','pl'), ('August','Hancock','m','ar'), ('Emerson','Chase','m','ar'), ('Rashad','Ellis','f','pl'), ('Kane','Lewis','f','pl'), ('Pamela','Hess','nb','ar'), ('Miriam','Bullock','nb','ar'), ('Kyra','Garner','m','pl'), ('Demetria','Curry','m','pl'), ('Nichole','Everett','f','ar'), ('Victor','Warner','f','ar'), ('Darrel','Mitchell','nb','pl'), ('Vance','Webster','nb','pl'), ('Scott','Pitts','m','ar'), ('Eliana','Fields','m','ar'), ('Hadley','Bonner','f','pl'), ('Christian','Yang','f','pl'), ('Cherokee','Raymond','nb','ar'), ('Kermit','Garrison','nb','ar'), ('Eliana','Rosario','m','pl'), ('Denton','Avery','m','pl'), ('Adrian','Jones','f','ar'), ('Quintessa','Peterson','f','ar'), ('Thane','Nielsen','nb','pl'), ('Lucius','Mitchell','nb','pl'), ('Keaton','Kennedy','m','ar'), ('Jena','Duffy','m','ar')
 ;
 
 insert into lim (

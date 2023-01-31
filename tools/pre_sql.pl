@@ -66,7 +66,7 @@ sub process_file {
                 ) = ($line =~ /&fk\s*($re_identifier_list)\s*->\s*($re_identifier)\s*($re_identifier_list)/gi);
                 $foreign_keys =~ s/@/$foreign_table/gi;
 
-                $line =~ s/&fk\s*$re_identifier_list\s*->\s*$re_identifier\s*$re_identifier_list/constraint \@_${foreign_table}_fk\n${indent}${indent}foreign key $own_keys\n${indent}${indent}references $foreign_table $foreign_keys/gi;
+                $line =~ s/&fk\s*$re_identifier_list\s*->\s*$re_identifier\s*$re_identifier_list/constraint \@_${foreign_table}_fk\n${indent}${indent}foreign key $own_keys\n${indent}${indent}references $foreign_table $foreign_keys\n${indent}${indent}on delete cascade/gi;
             }
             elsif ($name =~ /here/i) {
                 my $apath = abs_path($base_dir);
@@ -83,7 +83,7 @@ sub process_file {
         }
         # references
         if ($line =~ /->/) {
-            $line =~ s/-> ($re_identifier)_($re_identifier)/\n${indent}${indent}references $1 ($1_$2)/g;
+            $line =~ s/-> ($re_identifier)_($re_identifier)/\n${indent}${indent}references $1 ($1_$2)\n${indent}${indent}on delete cascade/g;
         }
         # joins
         if ($line =~ /<\|>/) {
