@@ -1,10 +1,11 @@
 import { Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useMatch, useNavigate } from 'react-router'
+import { Link } from 'react-router-dom'
 import { RoundEntry } from '../api'
 import { ListView } from '../components/ListView'
 import { Loader } from '../components/Loader'
-import { zip } from '../helpers/lists'
+import { bucket_inner_join, zip } from '../helpers/lists'
 import { fetch_api } from '../helpers/promises'
 import { isAuth } from '../state/global'
 import { useAlert } from '../state/hooks'
@@ -49,11 +50,13 @@ export const RoundRoute = () => {
         (typeof x === 'string' && x.length === 0)
       )
     }
-    const [changed_jumps, deleted_jumps, inserted_jumps] = zip(
+    const [changed_jumps, deleted_jumps, inserted_jumps] = bucket_inner_join(
+      row => row.participant_id,
       entries,
       changedRows,
     ).reduce(
       ([c, d, i], [old_row, new_row]) => {
+        debugger
         if (is_null(new_row.jump_distance) && is_null(new_row.jump_score)) {
           d.push({
             round_id: round_id,
@@ -71,7 +74,10 @@ export const RoundRoute = () => {
             jump_distance: new_row.jump_distance || -1,
             jump_score: new_row.jump_score || -1,
           })
-        } else {
+        } else if (
+          old_row.jump_distance !== new_row.jump_distance ||
+          old_row.jump_score != new_row.jump_score
+        ) {
           c.push({
             jump_round_id: round_id,
             jump_participant_id: new_row.participant_id,
@@ -103,7 +109,11 @@ export const RoundRoute = () => {
       c: changed_disqualifications,
       d: deleted_disqualifications,
       i: inserted_disqualifications,
-    } = zip(entries, changedRows).reduce(
+    } = bucket_inner_join(
+      row => row.participant_id,
+      entries,
+      changedRows,
+    ).reduce(
       (u, [old_row, new_row]) => {
         if (is_null(new_row.disqualification_reason)) {
           u.d.push({
@@ -119,7 +129,9 @@ export const RoundRoute = () => {
             disqualification_participant_id: new_row.participant_id,
             disqualification_reason: new_row.disqualification_reason,
           })
-        } else {
+        } else if (
+          old_row.disqualification_reason !== new_row.disqualification_reason
+        ) {
           u.c.push({
             disqualification_round_id: round_id,
             disqualification_participant_id: new_row.participant_id,
@@ -147,6 +159,8 @@ export const RoundRoute = () => {
       },
     )
 
+    debugger
+
     return fetch_api(
       alert,
       'round/update_entries',
@@ -171,6 +185,7 @@ export const RoundRoute = () => {
         <Loader loading={loading} />
       ) : (
         <ListView
+          showBack
           schema={[
             {
               key: 'position_final',
@@ -179,19 +194,51 @@ export const RoundRoute = () => {
               default: '?',
             },
             { key: 'position_initial', align: 'left', display: 'Poz. st.' },
-            { key: 'person_first_name', align: 'left', display: 'Imię' },
-            { key: 'person_last_name', align: 'left', display: 'Nazwisko' },
+            {
+              key: 'person_first_name',
+              align: 'left',
+              display: 'Imię',
+              prim: row => (
+                <Link
+                  style={{ color: 'inherit' }}
+                  to={`/person/${row.person_id}`}>
+                  {row.person_first_name}
+                </Link>
+              ),
+            },
+            {
+              key: 'person_last_name',
+              align: 'left',
+              display: 'Nazwisko',
+              prim: row => (
+                <Link
+                  style={{ color: 'inherit' }}
+                  to={`/person/${row.person_id}`}>
+                  {row.person_last_name}
+                </Link>
+              ),
+            },
             {
               key: 'participant_country_code',
               align: 'right',
               display: 'Kraj',
+              prim: row => (
+                <Link
+                  style={{ color: 'inherit' }}
+                  to={`/country/${row.participant_country_code}`}>
+                  {row.participant_country_code}
+                </Link>
+              ),
             },
             {
               key: 'jump_distance',
               align: 'right',
               display: 'Długość',
               default: 'DSQ',
-              alt: 'disqualification_reason',
+              prim: row =>
+                row.disqualification_reason
+                  ? `DSQ: ${row.disqualification_reason}`
+                  : `${row.jump_distance}`,
               deserialize: deserialize_num,
             },
             {
@@ -206,6 +253,8 @@ export const RoundRoute = () => {
               align: 'right',
               display: 'Ocena',
               default: '0',
+              prim: row =>
+                row.disqualification_reason ? `0` : `${row.jump_score}`,
               deserialize: deserialize_num,
             },
             {
@@ -213,7 +262,6 @@ export const RoundRoute = () => {
               align: 'right',
               display: 'Punkty',
               default: '0',
-              deserialize: deserialize_num,
             },
           ]}
           data={entries}

@@ -7,7 +7,7 @@ use crate::{
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-pub struct DeleteRoute;
+pub struct Route;
 #[derive(Deserialize)]
 struct Body {
     id: i32,
@@ -19,9 +19,9 @@ struct Response {
 }
 
 #[async_trait]
-impl ApiRoute for DeleteRoute {
+impl ApiRoute for Route {
     fn test_route(&self, method: &Method, path: &String) -> bool {
-        *method == Method::POST && path == "tournament/delete"
+        *method == Method::POST && path == "person/delete"
     }
 
     async fn run<'a>(&self, ctx: &'a RouteContext) -> Result<cgi::Response, String> {
@@ -36,16 +36,15 @@ impl ApiRoute for DeleteRoute {
                 ctx.body
             )
         })?;
-        let mut tx = db.connection.begin().await.map_err(|e| e.to_string())?;
 
         let result = sqlx::query!(
             "
-            delete from tournament 
-            where tournament_id = $1
-            ",
+          delete from person 
+          where person_id = $1
+          ",
             params.id
         )
-        .execute(&mut tx)
+        .execute(&db.connection)
         .await
         .map_err(|e| e.to_string())?;
 

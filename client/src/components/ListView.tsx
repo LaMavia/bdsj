@@ -11,9 +11,10 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Theme,
   Typography,
 } from '@mui/material'
-import { Box, Container } from '@mui/system'
+import { Box, Container, SxProps } from '@mui/system'
 import { PropsWithChildren, ReactElement, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { isAuth } from '../state/global'
@@ -23,7 +24,8 @@ export type FieldSchema<T> = {
   align: 'left' | 'right'
   display: string
   default?: string
-  alt?: keyof T
+  alt?: (row: T, i: number) => JSX.Element | string
+  prim?: (row: T, i: number) => JSX.Element | string
   onlyEdit?: boolean
   deserialize?: (x: string) => any
   render?: (x: any) => JSX.Element
@@ -35,14 +37,17 @@ export type ListViewParams<T> = {
   key_func: (entry: T) => string
   onDelete: (key: string) => void
   onCommit?: (changedRows: T[]) => Promise<void>
+  sx?: SxProps<any>
+  showBack?: boolean
 }
 
-export function ListView<T, K>({
+export function ListView<T>({
   schema,
   data,
   key_func,
   onCommit,
   children,
+  ...props
 }: PropsWithChildren<ListViewParams<T>>) {
   const auth = isAuth()
   const navigate = useNavigate()
@@ -59,7 +64,6 @@ export function ListView<T, K>({
     mod_row[field.key] = val
 
     setChangedRows({ [key]: mod_row, ...changedRows })
-    console.dir(changedRows)
   }
 
   const handleCommit = () => {
@@ -96,11 +100,13 @@ export function ListView<T, K>({
             flexFlow: 'row',
           }}>
           <Container
-            sx={{
-              maxWidth: '926px',
-              width: '70vw',
-              minWidth: '926px',
-            }}>
+            sx={
+              props?.sx || {
+                maxWidth: '926px',
+                width: '70vw',
+                minWidth: '926px',
+              }
+            }>
             <Paper
               sx={{ padding: '1rem', marginBottom: '0.5rem' }}
               elevation={3}>
@@ -108,10 +114,10 @@ export function ListView<T, K>({
                 sx={{ justifyContent: 'space-between', flexFlow: 'row' }}>
                 {children}
                 <ButtonGroup>
-                  <Button onClick={_ => navigate(-1)}>
-                    Wróć
-                  </Button>
-                  {auth && (
+                  {props.showBack && (
+                    <Button onClick={_ => navigate(-1)}>Wróć</Button>
+                  )}
+                  {auth && onCommit && (
                     <>
                       <Button
                         onClick={_ => setEdit(!edit)}
@@ -144,7 +150,7 @@ export function ListView<T, K>({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.map(row => (
+                  {data.map((row, i) => (
                     <TableRow key={`${key_func(row)}`}>
                       {schema.map(s =>
                         s.deserialize && edit ? (
@@ -169,11 +175,13 @@ export function ListView<T, K>({
                             align={s.align}>
                             {s.render
                               ? s.render(row[s.key])
+                              : s?.prim
+                              ? s.prim(row, i)
                               : `${
                                   row[s.key] === undefined ||
                                   row[s.key] === null
-                                    ? 'alt' in s
-                                      ? `${s?.default}:${row[s.alt as keyof T]}`
+                                    ? s?.alt
+                                      ? s.alt(row, i)
                                       : s?.default
                                     : row[s.key]
                                 }`}

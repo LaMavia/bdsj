@@ -1,5 +1,6 @@
 type Option<T> = T | undefined
 type i32 = number
+type i64 = number
 type f64 = number
 
 export interface ApiResponse<T, E = string> {
@@ -54,6 +55,8 @@ export interface PersonInfo {
   person_gender: string
   person_nationality_code: string
   person_nationality_name: string
+  person_points: i32
+  person_participations: i32
 }
 
 export interface RoundShort {
@@ -84,5 +87,20 @@ export interface RoundEntry {
 }
 
 export interface PersonEntry {
-  
+  person_id: i32
+  person_first_name: String
+  person_last_name: String
+  person_gender: String
+  person_nationality: String
+  person_points: i32
+}
+
+export interface TournamentShortInfo {
+  tournament_id: i32
+  tournament_name: String
+  tournament_year: i32
+  tournament_location_city: String
+  tournament_location_name: String
+  tournament_location_id: i32
+  tournament_host: String
 }

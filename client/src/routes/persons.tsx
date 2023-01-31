@@ -1,7 +1,8 @@
 import { Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useMatch, useNavigate } from 'react-router'
-import { RoundEntry } from '../api'
+import { Link } from 'react-router-dom'
+import { PersonEntry, RoundEntry } from '../api'
 import { ListView } from '../components/ListView'
 import { fetch_api } from '../helpers/promises'
 import { isAuth } from '../state/global'
@@ -13,43 +14,73 @@ export const PersonsRoute = () => {
   const [loading, setLoading] = useState(true)
   const [refetch, setRefetch] = useState(false)
   const alert = useAlert()
-  const [entries, setEntries] = useState<RoundEntry[]>([])
+  const [entries, setEntries] = useState<PersonEntry[]>([])
 
   // onMount
   useEffect(() => {
     setLoading(true)
-    fetch_api(alert, 'persons/get', {}, setEntries).finally(() =>
+    fetch_api(alert, 'person/get/short', {}, setEntries).finally(() =>
       setLoading(false),
     )
   }, [refetch])
 
   return (
     <ListView
+      showBack
       schema={[
         {
-          key: 'position_final',
+          key: 'person_id',
+          display: 'Lp.',
           align: 'left',
-          display: 'Poz. kń.',
-          default: '?',
+          prim: (_, i) => `${i + 1}`,
         },
-        { key: 'position_initial', align: 'left', display: 'Poz. st.' },
-        { key: 'person_first_name', align: 'left', display: 'Imię' },
-        { key: 'person_last_name', align: 'left', display: 'Nazwisko' },
-        { key: 'participant_country_code', align: 'right', display: 'Kraj' },
         {
-          key: 'jump_distance',
-          align: 'right',
-          display: 'Długość',
-          default: 'DSQ',
-          alt: 'disqualification_reason',
+          key: 'person_first_name',
+          align: 'left',
+          display: 'Imię',
+          prim: row => (
+            <Link style={{ color: 'inherit' }} to={`/person/${row.person_id}`}>
+              {row.person_first_name}
+            </Link>
+          ),
         },
-        { key: 'jump_score', align: 'right', display: 'Ocena', default: '0' },
-        { key: 'score', align: 'right', display: 'Punkty', default: '0' },
+        {
+          key: 'person_last_name',
+          align: 'left',
+          display: 'Nazwisko',
+          prim: row => (
+            <Link style={{ color: 'inherit' }} to={`/person/${row.person_id}`}>
+              {row.person_last_name}
+            </Link>
+          ),
+        },
+        {
+          key: 'person_gender',
+          align: 'right',
+          display: 'Płeć',
+        },
+        {
+          key: 'person_nationality',
+          align: 'right',
+          display: 'Narodowość',
+          prim: row => (
+            <Link
+              style={{ color: 'inherit' }}
+              to={`/country/${row.person_nationality}`}>
+              {row.person_nationality}
+            </Link>
+          ),
+        },
+        {
+          key: 'person_points',
+          align: 'right',
+          display: 'Punkty Pucharowe',
+        },
       ]}
       data={entries}
-      key_func={e => String(e.participant_id)}
+      key_func={e => String(e.person_id)}
       onDelete={_ => {}}>
-      <Typography variant="h4">Wyniki rundy</Typography>
+      <Typography variant="h4">Zawodnicy</Typography>
     </ListView>
   )
 }

@@ -12,6 +12,8 @@ import './vite-env.d.ts'
 import { ChoicePanelRoute } from './routes/choice_panel'
 import { TournamentRoute } from './routes/tournament'
 import { RoundRoute } from './routes/round'
+import { PersonsRoute } from './routes/persons'
+import { PersonRoute } from './routes/person'
 
 const router = createHashRouter([
   {
@@ -38,6 +40,13 @@ const router = createHashRouter([
       {
         path: '/round/:id',
         element: <RoundRoute />
+      },
+      {
+        path: '/persons',
+        element: <PersonsRoute />
+      }, {
+        path: '/person/:id',
+        element: <PersonRoute />
       }
     ],
   },

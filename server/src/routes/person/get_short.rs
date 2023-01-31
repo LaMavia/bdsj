@@ -55,6 +55,7 @@ impl ApiRoute for Route {
             .add("last_name", filters.last_names)
             .add("gender", filters.genders)
             .add("nationality", filters.nationalities)
+            .inject("\norder by person_points desc")
             .build_query_as::<Postgres, Person>()
             .fetch_all(&db.connection)
             .await

@@ -2,11 +2,12 @@ use crate::{
     api_response::ApiResponse,
     database::Database,
     funcs::filter::FilterBuilder,
+    models::tournament::TournamentInfo,
     router::{ApiRoute, Method, RouteContext},
 };
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Postgres};
+use serde::Deserialize;
+use sqlx::Postgres;
 
 pub struct GetRoute;
 #[derive(Deserialize)]
@@ -17,23 +18,6 @@ struct Body {
     stages: Option<Vec<i32>>,
     hosts: Option<Vec<String>>,
     ids: Option<Vec<i32>>,
-}
-
-#[derive(Serialize, FromRow)]
-struct TournamentInfo {
-    pub tournament_id: i32,
-    pub tournament_name: String,
-    pub tournament_year: i32,
-    pub tournament_location_city: String,
-    pub tournament_location_name: String,
-    pub tournament_location_id: i32,
-    pub tournament_stage: i32,
-    pub tournament_host_code: String,
-    pub tournament_host_name: String,
-    pub tournament_participant_count: i64,
-    pub tournament_country_participating_count: i64,
-    pub tournament_country_count: i64,
-    pub tournament_total_tickets: i64
 }
 
 #[async_trait]

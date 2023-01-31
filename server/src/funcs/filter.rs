@@ -59,6 +59,14 @@ impl FilterBuilder {
         self
     }
 
+    pub fn inject<S>(&mut self, sql: S) -> &mut Self
+    where
+        S: ToString,
+    {
+        self.query.push_str(sql.to_string().as_str());
+        return self
+    }
+
     pub fn sql(&self) -> String {
         self.query.clone()
     }

@@ -209,6 +209,7 @@ create or replace function score(
 ) returns float as $$
   declare
     score float := 0;
+    was_dis boolean;
   begin
     select jump_score + jump_distance into score
       from jump
@@ -216,7 +217,16 @@ create or replace function score(
         and jump_round_id = in_round_id
     ;
 
-    if score is null then 
+    select exists (
+      select * 
+      from disqualification 
+      where disqualification_participant_id = in_participant_id
+        and disqualification_round_id       = in_round_id
+    ) A into was_dis;
+
+    if was_dis is null and score is not null then
+      return score;
+    elsif score is null or was_dis then 
       return 0;
     else 
       return score;
@@ -697,77 +707,77 @@ create trigger round_exclusion_dis_trigger
   execute procedure round_exclusion_dis_check()
 ;
 
-create or replace function round_existence_dis_check() 
-returns trigger as $$
-  declare
-    e_jump boolean;
-  begin
-    -- check if the jump exists
-    select exists (
-      select * 
-      from jump 
-      where jump.jump_participant_id = OLD.disqualification_participant_id
-        and jump.jump_round_id       = OLD.disqualification_round_id
-    ) A into e_jump;
+-- create or replace function round_existence_dis_check() 
+-- returns trigger as $$
+--   declare
+--     e_jump boolean;
+--   begin
+--     -- check if the jump exists
+--     select exists (
+--       select * 
+--       from jump 
+--       where jump.jump_participant_id = OLD.disqualification_participant_id
+--         and jump.jump_round_id       = OLD.disqualification_round_id
+--     ) A into e_jump;
 
-    if not e_jump then 
-      raise exception 'Rekord musi zawierać skok (jump) lub dyskwalifikację (disqualification)';
-    end if;
+--     if not e_jump then 
+--       raise exception 'Rekord musi zawierać skok (jump) lub dyskwalifikację (disqualification)';
+--     end if;
 
-    return NEW;
-  end;
-$$ language plpgsql;
+--     return NEW;
+--   end;
+-- $$ language plpgsql;
 
-create trigger round_existence_dis_trigger
-  before delete 
-  on disqualification 
-  for each row
-  execute procedure round_existence_dis_check()
-;
+-- create trigger round_existence_dis_trigger
+--   before delete 
+--   on disqualification 
+--   for each row
+--   execute procedure round_existence_dis_check()
+-- ;
 
-create or replace function round_existence_jump_check() 
-returns trigger as $$
-  declare
-    e_dis boolean;
-  begin
-    -- check if the jump exists
-    select exists (
-      select * 
-      from disqualification 
-      where disqualification_participant_id = OLD.jump_participant_id
-        and disqualification_round_id       = OLD.jump_round_id
-    ) A into e_dis;
+-- create or replace function round_existence_jump_check() 
+-- returns trigger as $$
+--   declare
+--     e_dis boolean;
+--   begin
+--     -- check if the jump exists
+--     select exists (
+--       select * 
+--       from disqualification 
+--       where disqualification_participant_id = OLD.jump_participant_id
+--         and disqualification_round_id       = OLD.jump_round_id
+--     ) A into e_dis;
 
-    if not e_dis then 
-      raise exception 'Rekord musi zawierać skok (jump) lub dyskwalifikację (disqualification)';
-    end if;
+--     if not e_dis then 
+--       raise exception 'Rekord musi zawierać skok (jump) lub dyskwalifikację (disqualification)';
+--     end if;
 
-    return NEW;
-  end;
-$$ language plpgsql;
+--     return NEW;
+--   end;
+-- $$ language plpgsql;
 
-create trigger round_existence_jump_trigger
-  before delete 
-  on jump
-  for each row
-  execute procedure round_existence_jump_check()
-;
+-- create trigger round_existence_jump_trigger
+--   before delete 
+--   on jump
+--   for each row
+--   execute procedure round_existence_jump_check()
+-- ;
 
-create or replace function pre_round_dependant_delete() 
-returns void as $$
-  begin
-    alter table jump disable trigger round_existence_jump_trigger;
-    alter table disqualification disable trigger round_exclusion_dis_trigger;
-  end;
-$$ language plpgsql;
+-- create or replace function pre_round_dependant_delete() 
+-- returns void as $$
+--   begin
+--     alter table jump disable trigger round_existence_jump_trigger;
+--     alter table disqualification disable trigger round_exclusion_dis_trigger;
+--   end;
+-- $$ language plpgsql;
 
-create or replace function post_round_dependant_delete() 
-returns void as $$
-  begin
-    alter table jump enable trigger round_existence_jump_trigger;
-    alter table disqualification enable trigger round_exclusion_dis_trigger;
-  end;
-$$ language plpgsql;
+-- create or replace function post_round_dependant_delete() 
+-- returns void as $$
+--   begin
+--     alter table jump enable trigger round_existence_jump_trigger;
+--     alter table disqualification enable trigger round_exclusion_dis_trigger;
+--   end;
+-- $$ language plpgsql;
 
 insert into country (
   country_name, 
@@ -840,4 +850,27 @@ insert into participant (
 ;
 
 insert into auth(auth_pass) values (md5('xxx'));
+do language plpgsql $$
+declare 
+  mx integer;
+begin
+  select max(auth_id) into mx from auth;
+  perform setval('auth_auth_id_seq', mx + 1);
+
+  select max(location_id) into mx from location;
+  perform setval('location_location_id_seq', mx + 1);
+
+  select max(participant_id) into mx from participant;
+  perform setval('participant_participant_id_seq', mx + 1);
+
+  select max(person_id) into mx from person;
+  perform setval('person_person_id_seq', mx + 1);
+
+  select max(round_id) into mx from round;
+  perform setval('round_round_id_seq', mx + 1);
+
+  select max(tournament_id) into mx from tournament;
+  perform setval('tournament_tournament_id_seq', mx + 1);
+end;
+$$;
 commit;

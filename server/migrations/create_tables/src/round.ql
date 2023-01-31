@@ -32,6 +32,7 @@ create or replace function score(
 ) returns float as $$
   declare
     score float := 0;
+    was_dis boolean;
   begin
     select jump_score + jump_distance into score
       from jump
@@ -39,7 +40,16 @@ create or replace function score(
         and jump_round_id = in_round_id
     ;
 
-    if score is null then 
+    select exists (
+      select * 
+      from disqualification 
+      where disqualification_participant_id = in_participant_id
+        and disqualification_round_id       = in_round_id
+    ) A into was_dis;
+
+    if was_dis is null and score is not null then
+      return score;
+    elsif score is null or was_dis then 
       return 0;
     else 
       return score;

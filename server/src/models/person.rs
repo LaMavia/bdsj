@@ -7,4 +7,5 @@ pub struct Person {
     pub person_last_name: String,
     pub person_gender: String,
     pub person_nationality: String,
+    pub person_points: i32
 }

@@ -14,4 +14,5 @@ import('./src/round.ql');
 import('./src/validity.ql');
 
 import('./data/mod.ql');
+import('./helpers/update_id_seq.ql');
 commit;
