@@ -35,7 +35,7 @@ export type ListViewParams<T> = {
   schema: FieldSchema<T>[]
   data: T[]
   key_func: (entry: T) => string
-  onDelete: (key: string) => void
+  onDelete?: (key: string) => void
   onCommit?: (changedRows: T[]) => Promise<void>
   sx?: SxProps<any>
   showBack?: boolean

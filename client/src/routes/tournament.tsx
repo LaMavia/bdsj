@@ -36,7 +36,6 @@ import { AddParticipant } from '../views/tournament/AddParticipant'
 import { Stage } from '../views/tournament/Stage'
 import { DeletePopup } from '../views/tournaments/DeletePopup'
 
-
 export const TournamentRoute = () => {
   const match = useMatch('/tournament/:id')
   if (!match) {
@@ -161,12 +160,10 @@ export const TournamentRoute = () => {
                     {
                       label: 'Liczba zgłoszeń',
                       value: `${tournament?.tournament_participant_count}/${tournament?.tournament_total_tickets}`,
-                      link: `/participants/${id}`,
                     },
                     {
                       label: 'Liczba zgłoszonych krajów',
                       value: tournament?.tournament_country_count,
-                      link: `/countries/${id}`,
                     },
                   ] as TextPropProps[]
                 ).map(p => (

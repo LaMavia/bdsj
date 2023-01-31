@@ -14,6 +14,8 @@ import { TournamentRoute } from './routes/tournament'
 import { RoundRoute } from './routes/round'
 import { PersonsRoute } from './routes/persons'
 import { PersonRoute } from './routes/person'
+import { CountriesRoute } from './routes/countries'
+import { CountryRoute } from './routes/country'
 
 const router = createHashRouter([
   {
@@ -39,15 +41,24 @@ const router = createHashRouter([
       },
       {
         path: '/round/:id',
-        element: <RoundRoute />
+        element: <RoundRoute />,
       },
       {
         path: '/persons',
-        element: <PersonsRoute />
-      }, {
+        element: <PersonsRoute />,
+      },
+      {
         path: '/person/:id',
-        element: <PersonRoute />
-      }
+        element: <PersonRoute />,
+      },
+      {
+        path: '/countries',
+        element: <CountriesRoute />,
+      },
+      {
+        path: '/country/:id',
+        element: <CountryRoute />,
+      },
     ],
   },
 ])

@@ -33,6 +33,22 @@ export interface CountryInfo {
   country_code: string
 }
 
+export interface CountryEntryInfo {
+  country_code: string,
+  country_name: string,
+  country_tournaments: number,
+  country_participants: number
+}
+
+export interface CountryDescInfo {
+  country_code: string,
+  country_name: string,
+  country_tournaments: number,
+  country_participants: number
+  country_nationals: number,
+  country_points: number
+}
+
 export interface LocationInfo {
   location_id: number
   location_name: string

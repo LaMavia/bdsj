@@ -1,7 +1,9 @@
 mod delete;
 mod get;
 mod get_desc;
+mod gets;
 mod post;
+mod tournaments;
 use self::delete::DeleteRoute;
 use self::get::GetRoute;
 
@@ -13,5 +15,7 @@ impl crate::router::Mounter for CountryPack {
             .mount(post::Route {})
             .mount(DeleteRoute {})
             .mount(get_desc::Route {})
+            .mount(gets::Route {})
+            .mount(tournaments::Route {})
     }
 }

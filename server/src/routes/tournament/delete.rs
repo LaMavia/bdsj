@@ -36,8 +36,7 @@ impl ApiRoute for DeleteRoute {
                 ctx.body
             )
         })?;
-        let mut tx = db.connection.begin().await.map_err(|e| e.to_string())?;
-
+        
         let result = sqlx::query!(
             "
             delete from tournament 
@@ -45,7 +44,7 @@ impl ApiRoute for DeleteRoute {
             ",
             params.id
         )
-        .execute(&mut tx)
+        .execute(&db.connection)
         .await
         .map_err(|e| e.to_string())?;
 

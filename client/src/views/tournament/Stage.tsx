@@ -73,7 +73,7 @@ export const Stage = ({ alert, tournament_id }: StageProps) => {
           justifyContent: 'space-between',
         }}>
         <Typography sx={{ padding: '10px' }}>Etapy</Typography>
-        {auth && (
+        {auth && (stages?.stage_nr ?? 0) < 4 && (
           <Button
             onClick={_ => {
               onNextRound()
