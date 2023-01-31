@@ -34,18 +34,18 @@ export interface CountryInfo {
 }
 
 export interface CountryEntryInfo {
-  country_code: string,
-  country_name: string,
-  country_tournaments: number,
+  country_code: string
+  country_name: string
+  country_tournaments: number
   country_participants: number
 }
 
 export interface CountryDescInfo {
-  country_code: string,
-  country_name: string,
-  country_tournaments: number,
+  country_code: string
+  country_name: string
+  country_tournaments: number
   country_participants: number
-  country_nationals: number,
+  country_nationals: number
   country_points: number
 }
 
@@ -54,6 +54,7 @@ export interface LocationInfo {
   location_name: string
   location_city: string
   location_country_code: string
+  location_country_name: string
 }
 
 export interface PersonShortInfo {

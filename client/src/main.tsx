@@ -16,6 +16,8 @@ import { PersonsRoute } from './routes/persons'
 import { PersonRoute } from './routes/person'
 import { CountriesRoute } from './routes/countries'
 import { CountryRoute } from './routes/country'
+import { LocationsRoute } from './routes/locations'
+import { LocationRoute } from './routes/location'
 
 const router = createHashRouter([
   {
@@ -58,6 +60,14 @@ const router = createHashRouter([
       {
         path: '/country/:id',
         element: <CountryRoute />,
+      },
+      {
+        path: '/locations',
+        element: <LocationsRoute />,
+      },
+      {
+        path: '/location/:id',
+        element: <LocationRoute />,
       },
     ],
   },

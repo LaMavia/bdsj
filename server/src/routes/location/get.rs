@@ -2,7 +2,7 @@ use crate::{
     api_response::ApiResponse,
     database::Database,
     funcs::filter::FilterBuilder,
-    models::location::Location,
+    models::location::LocationInfo,
     router::{ApiRoute, Method, RouteContext},
 };
 use async_trait::async_trait;
@@ -36,15 +36,26 @@ impl ApiRoute for Route {
         })
         .unwrap();
 
-        let result = FilterBuilder::new("location", "select * from location where ")
-            .add("id", filters.ids)
-            .add("country_code", filters.country_codes)
-            .add("city", filters.cities)
-            .add("name", filters.names)
-            .build_query_as::<Postgres, Location>()
-            .fetch_all(&db.connection)
-            .await
-            .map_err(|e| e.to_string())?;
+        let result = FilterBuilder::new(
+            "location",
+            "
+            select 
+                location.*, 
+                country_name location_country_name 
+            from location 
+            inner join country 
+                on (location_country_code = country_code)
+            where 
+            ",
+        )
+        .add("id", filters.ids)
+        .add("country_code", filters.country_codes)
+        .add("city", filters.cities)
+        .add("name", filters.names)
+        .build_query_as::<Postgres, LocationInfo>()
+        .fetch_all(&db.connection)
+        .await
+        .map_err(|e| e.to_string())?;
 
         ApiResponse::<_>::ok(&ctx.headers, result).send(200, None)
     }
