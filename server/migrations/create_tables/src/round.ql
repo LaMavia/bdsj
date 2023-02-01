@@ -369,9 +369,7 @@ create or replace function next_stage(
     elsif current_stage = 3 then
     -- end the tournament
       update tournament 
-        set 
-          tournament_round_first_id = new_round_id,
-          tournament_stage = 4
+        set tournament_stage = 4
         where tournament_id = in_tournament_id
         ;
       

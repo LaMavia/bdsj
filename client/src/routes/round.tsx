@@ -1,8 +1,16 @@
-import { Typography } from '@mui/material'
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Typography,
+} from '@mui/material'
 import { useEffect, useState } from 'react'
 import { useMatch, useNavigate } from 'react-router'
 import { Link } from 'react-router-dom'
 import { RoundEntry } from '../api'
+import { LinkButton } from '../components/LinkButton'
 import { ListView } from '../components/ListView'
 import { Loader } from '../components/Loader'
 import { bucket_inner_join, zip } from '../helpers/lists'
@@ -25,18 +33,22 @@ export const RoundRoute = () => {
   const [refetch, setRefetch] = useState(false)
   const alert = useAlert()
   const [entries, setEntries] = useState<RoundEntry[]>([])
+  const [exists, setExists] = useState(false)
 
   // onMount
   useEffect(() => {
     setLoading(true)
-    fetch_api(
-      alert,
-      'round/get',
-      {
-        round_id,
-      },
-      setEntries,
-    ).finally(() => setLoading(false))
+    Promise.all([
+      fetch_api(
+        alert,
+        'round/get',
+        {
+          round_id,
+        },
+        setEntries,
+      ),
+      fetch_api(alert, 'round/exists', { round_id }, setExists),
+    ]).finally(() => setLoading(false))
   }, [refetch])
 
   const onCommit = (changedRows: RoundEntry[]): Promise<void> => {
@@ -183,7 +195,7 @@ export const RoundRoute = () => {
     <>
       {loading ? (
         <Loader loading={loading} />
-      ) : (
+      ) : exists ? (
         <ListView
           showBack
           schema={[
@@ -270,6 +282,20 @@ export const RoundRoute = () => {
           onCommit={onCommit}>
           <Typography variant="h4">Wyniki rundy</Typography>
         </ListView>
+      ) : (
+        <Dialog open>
+          <DialogTitle>Błąd wyszukiwania</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Nie znaleziono rundy o id = {round_id}
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions
+            sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+            <LinkButton to="/">Strona Główna</LinkButton>
+            <LinkButton to="/tournaments">Turnieje</LinkButton>
+          </DialogActions>
+        </Dialog>
       )}
       <alert.AlertComponent />
     </>

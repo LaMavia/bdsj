@@ -29,4 +29,13 @@ drop trigger if exists round_exclusion_dis_trigger
   on disqualification 
   cascade;
 
+drop trigger if exists round_closed_jump_trigger
+  on jump
+  cascade
+;
+drop trigger if exists round_closed_dis_trigger
+  on disqualification
+  cascade
+;
+
 commit;

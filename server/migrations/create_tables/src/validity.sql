@@ -127,74 +127,56 @@ create trigger round_exclusion_dis_trigger
   execute procedure round_exclusion_dis_check()
 ;
 
--- create or replace function round_existence_dis_check() 
--- returns trigger as $$
---   declare
---     e_jump boolean;
---   begin
---     -- check if the jump exists
---     select exists (
---       select * 
---       from jump 
---       where jump.jump_participant_id = OLD.disqualification_participant_id
---         and jump.jump_round_id       = OLD.disqualification_round_id
---     ) A into e_jump;
+create or replace function round_closed_jump_check() 
+returns trigger as $$
+  declare
+    is_closed boolean;
+  begin
+    select exists (
+      select position_final
+      from position
+      where position_final is not null
+        and position_round_id = NEW.jump_round_id
+    ) A into is_closed;
 
---     if not e_jump then 
---       raise exception 'Rekord musi zawierać skok (jump) lub dyskwalifikację (disqualification)';
---     end if;
+    if is_closed then 
+      raise exception 'Nie można dokonywać zmian w rundzie po jej zakończeniu.';
+    end if;
 
---     return NEW;
---   end;
--- $$ language plpgsql;
+    return NEW;
+  end;
+$$ language plpgsql;
 
--- create trigger round_existence_dis_trigger
---   before delete 
---   on disqualification 
---   for each row
---   execute procedure round_existence_dis_check()
--- ;
+create trigger round_closed_jump_trigger
+  before update or insert
+  on jump
+  for each row
+  execute procedure round_closed_jump_check()
+;
 
--- create or replace function round_existence_jump_check() 
--- returns trigger as $$
---   declare
---     e_dis boolean;
---   begin
---     -- check if the jump exists
---     select exists (
---       select * 
---       from disqualification 
---       where disqualification_participant_id = OLD.jump_participant_id
---         and disqualification_round_id       = OLD.jump_round_id
---     ) A into e_dis;
+create or replace function round_closed_dis_check() 
+returns trigger as $$
+  declare
+    is_closed boolean;
+  begin
+    select exists (
+      select position_final
+      from position
+      where position_final is not null
+        and position_round_id = NEW.disqualification_round_id
+    ) A into is_closed;
 
---     if not e_dis then 
---       raise exception 'Rekord musi zawierać skok (jump) lub dyskwalifikację (disqualification)';
---     end if;
+    if is_closed then 
+      raise exception 'Nie można dokonywać zmian w rundzie po jej zakończeniu.';
+    end if;
 
---     return NEW;
---   end;
--- $$ language plpgsql;
+    return NEW;
+  end;
+$$ language plpgsql;
 
--- create trigger round_existence_jump_trigger
---   before delete 
---   on jump
---   for each row
---   execute procedure round_existence_jump_check()
--- ;
-
--- create or replace function pre_round_dependant_delete() 
--- returns void as $$
---   begin
---     alter table jump disable trigger round_existence_jump_trigger;
---     alter table disqualification disable trigger round_exclusion_dis_trigger;
---   end;
--- $$ language plpgsql;
-
--- create or replace function post_round_dependant_delete() 
--- returns void as $$
---   begin
---     alter table jump enable trigger round_existence_jump_trigger;
---     alter table disqualification enable trigger round_exclusion_dis_trigger;
---   end;
--- $$ language plpgsql;
+create trigger round_closed_dis_trigger
+  before update or insert
+  on disqualification
+  for each row
+  execute procedure round_closed_dis_check()
+;
