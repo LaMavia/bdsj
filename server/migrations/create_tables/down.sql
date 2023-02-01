@@ -38,4 +38,9 @@ drop trigger if exists round_closed_dis_trigger
   cascade
 ;
 
+drop trigger if exists lim_insert_trigger
+  on lim
+  cascade
+;
+
 commit;

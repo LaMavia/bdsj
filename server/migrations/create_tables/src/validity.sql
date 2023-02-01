@@ -45,7 +45,33 @@ create trigger participant_insert_check_trigger
   before insert 
   on participant
   for each row
-  execute procedure participant_insert_check();
+  execute procedure participant_insert_check()
+;
+
+create or replace function lim_insert_check() 
+returns trigger as $$
+  declare
+    stage integer;
+  begin
+    select tournament_stage into stage
+    from tournament 
+    where tournament_id = NEW.lim_tournament_id
+    ;
+
+    if stage > 0 then
+      raise exception 'Nie można dokonywać zmian w kwotach startowych po zakończeniu zapisów';
+    end if;
+
+    return NEW;
+  end;
+$$ language plpgsql;
+
+create trigger lim_insert_trigger
+  before insert or update
+  on lim
+  for each row
+  execute procedure lim_insert_check()
+;
 
 create or replace function check_tournament_location()
 returns trigger as $$
