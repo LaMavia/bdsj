@@ -91,8 +91,6 @@ export const LocationRoute = () => {
     ]).finally(() => setLoading(false))
   }, [refetch])
 
-  console.dir(location)
-
   return loading ? (
     <Loader loading={loading} />
   ) : location ? (

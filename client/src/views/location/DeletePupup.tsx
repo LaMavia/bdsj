@@ -47,7 +47,6 @@ export const DeletePopup = ({
 
     setIsLoading(true)
     fetch_api(alert, 'location/delete', { id: location.location_id }, r => {
-      debugger
       alert.display('poprawnie usunięto lokalizację', 'success')
       handleClose()
       onSuccess()

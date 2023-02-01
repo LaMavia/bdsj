@@ -68,7 +68,6 @@ export const RoundRoute = () => {
       changedRows,
     ).reduce(
       ([c, d, i], [old_row, new_row]) => {
-        debugger
         if (is_null(new_row.jump_distance) && is_null(new_row.jump_score)) {
           d.push({
             round_id: round_id,
@@ -170,8 +169,6 @@ export const RoundRoute = () => {
         }[]
       },
     )
-
-    debugger
 
     return fetch_api(
       alert,
@@ -283,7 +280,7 @@ export const RoundRoute = () => {
           <Typography variant="h4">Wyniki rundy</Typography>
         </ListView>
       ) : (
-        <Dialog open>
+        <Dialog open={!exists}>
           <DialogTitle>Błąd wyszukiwania</DialogTitle>
           <DialogContent>
             <DialogContentText>
@@ -292,8 +289,12 @@ export const RoundRoute = () => {
           </DialogContent>
           <DialogActions
             sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-            <LinkButton to="/">Strona Główna</LinkButton>
-            <LinkButton to="/tournaments">Turnieje</LinkButton>
+            <LinkButton onClick={() => setExists(true)} to="/">
+              Strona Główna
+            </LinkButton>
+            <LinkButton onClick={() => setExists(true)} to="/tournaments">
+              <Typography variant="h5">Turnieje</Typography>
+            </LinkButton>
           </DialogActions>
         </Dialog>
       )}

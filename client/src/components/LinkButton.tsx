@@ -14,6 +14,7 @@ export interface LinkButtonProps {
     | 'warning'
   disabled?: boolean
   variant?: 'text' | 'outlined' | 'contained'
+  onClick?: () => void
 }
 
 export const LinkButton = ({
@@ -22,8 +23,9 @@ export const LinkButton = ({
   variant,
   to,
   children,
+  onClick,
 }: PropsWithChildren<LinkButtonProps>) => (
-  <Button {...{ color, disabled, variant }}>
+  <Button onClick={onClick} {...{ color, disabled, variant }}>
     <Link to={to} style={{ color: 'inherit', textDecoration: 'inherit' }}>
       {children}
     </Link>

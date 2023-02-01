@@ -42,7 +42,6 @@ export const DeletePopup = ({
 
     setIsLoading(true)
     fetch_api(alert, 'person/delete', { id: person.person_id }, r => {
-      debugger
       alert.display('poprawnie usunięto osobę', 'success')
       handleClose()
       onSuccess()

@@ -84,8 +84,6 @@ export const AddCountryPopup = ({
         }
       })
       .catch((e: TypeError) => {
-        debugger
-        console.log(uri)
         setAlertMsg(e.message)
         setAlertSeverity('error')
         onError()

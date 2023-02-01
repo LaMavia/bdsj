@@ -205,7 +205,7 @@ export const PersonRoute = () => {
                     ),
                   },
                 ]}>
-                Turnieje
+                <Typography variant="h5">Turnieje</Typography>
               </ListView>
             </Paper>
           </Container>

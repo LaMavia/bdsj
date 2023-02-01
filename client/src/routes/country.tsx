@@ -67,7 +67,6 @@ export const CountryRoute = () => {
   const [refetch, setRefetch] = useState(false)
 
   const closeDelete = () => setShowDelete(false)
-  console.dir(country)
 
   // onMount
   useEffect(() => {
@@ -179,6 +178,13 @@ export const CountryRoute = () => {
                     key: 'tournament_name',
                     display: 'Nazwa',
                     align: 'left',
+                    prim: row => (
+                      <Link
+                        style={{ color: 'inherit' }}
+                        to={`/tournament/${row.tournament_id}`}>
+                        {row.tournament_name}
+                      </Link>
+                    ),
                   },
                   {
                     key: 'tournament_year',
@@ -211,7 +217,7 @@ export const CountryRoute = () => {
                     ),
                   },
                 ]}>
-                <Typography variant="h4">Turnieje</Typography>
+                <Typography variant="h5">Turnieje</Typography>
               </ListView>
             </Paper>
           </Container>

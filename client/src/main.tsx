@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
 import { createHashRouter, RouterProvider } from 'react-router-dom'
@@ -75,7 +75,8 @@ const router = createHashRouter([
 
 const App = () => {
   const GlobalProvider = getGlobalProvider()
-  const theme = createTheme({ palette: { mode: 'dark' } })
+  const [useDark, setUseDark] = useState(true)
+  const theme = createTheme({ palette: { mode: useDark ? 'dark' : 'light' } })
 
   return (
     <React.StrictMode>
