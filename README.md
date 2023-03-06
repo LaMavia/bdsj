@@ -10,4 +10,4 @@ Stack:
       2. Rust (sqlx)
       3. Postgresql 
 
-[Wersja live](students.mimuw.edu.pl/~ts438730/bdsj/strona)
+[Wersja live](https://students.mimuw.edu.pl/~ts438730/bdsj/strona)
